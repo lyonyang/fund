@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>API Docs</title>
+    <link rel='stylesheet prefetch' href='http://fonts.googleapis.com/css?family=Open+Sans'>
+    <link rel="stylesheet" href="{{ static_url('docs/css/login.css') }}">
+    <link rel="shortcut icon" href="{{ static_url('docs/images/favicon.png') }}">
+</head>
+
+<body onkeydown="Login();">
+<div class="cont" style="top: 80px;">
+    <div class="form sign-in">
+        <h2>API 文档管理后台</h2>
+        <label>
+            <span>用户名</span>
+            <input type="text" id="username" name="username"/>
+        </label>
+        <label>
+            <span>密码</span>
+            <input type="password" id="password" name="password"/>
+        </label>
+        <div style="height: 30px;padding-top: 20px;">
+            <p id="errorMessage" style="color: red;text-align: center"></p>
+        </div>
+        <button id="loginBtn" onclick="formSubmit()" class="submit">登录</button>
+    </div>
+    <div class="sub-cont">
+        <div class="img">
+            <div class="img__text m--up">
+                <h2>tornado api docs</h2>
+                <p>快速构建Web API</p>
+            </div>
+
+        </div>
+    </div>
+</div>
+<script src="{{ static_url('docs/js/jquery-3.1.1.min.js') }}"></script>
+<script>
+    function formSubmit() {
+        $('#errorMessage').text("");
+        $.ajax({
+            type: "post",
+            url: "/tornado_docs/login",
+            data: {
+                username: $("#username").val(),
+                password: $("#password").val()
+            },
+            dataType: "json",
+
+            success: function (data) {
+                if (data.return_code !== 0) {
+                    $('#errorMessage').text(data.return_msg)
+                }
+                document.cookie = "docs_token=" + data.return_data.docs_token + ";path=/";
+                window.location.href = "/tornado_docs"
+            },
+            error: function () {
+                $('#errorMessage').text("系统繁忙")
+            }
+        });
+    }
+
+    function Login() {
+        // 监听回车键
+        if (event.keyCode == 13) 
+            $('#loginBtn').click();
+    }
+</script>
+</body>
+</html>

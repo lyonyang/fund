@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block apps_menu %}
+
+
+<li>
+    <a href="/tornado_docs/markdown" style="cursor:pointer;">Markdown</a>
+</li>
+<li class="dropdown">
+    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true"
+       aria-expanded="false">Jump To<span class="caret"></span></a>
+    <ul class="dropdown-menu">
+        {% for group in endpoints%}
+        <li><a href="#{{ group[0] }}-group" style="cursor:pointer;">{{ group[0] }}</a>
+        </li>
+        {% end %}
+    </ul>
+</li>
+
+<li>
+    <a href="#" style="cursor:pointer;" data-toggle="modal" data-target="#tokenModal">Token</a>
+</li>
+<li>
+    <a href="#" style="cursor:pointer;" onclick="Logout()">Log out</a>
+</li>
+{% end %}
+
+{% block jumbotron %}
+<div class="jumbotron">
+    <h1>Tornado API Docs</h1>
+    <h3><a href="#" target="_blank">Live API Endpoints</a>.</h3>
+</div>
+{% end %}
+
+
+{% block content %}
+
+<div id="loading"
+     style="display:none;position: fixed;top: 0;right: 0;bottom: 0;left: 0;z-index: 1060;background-color:#18BC9C;opacity: 0.5; text-align: center;">
+    <div style="margin-top: 20%;">
+        <img src="{{ static_url('docs/images/loading.gif') }}" alt="正在加载中...">
+    </div>
+</div>
+
+
+{% for group in endpoints%}
+<h1 id="{{ group[0] }}-group"><a
+        href="#{{ group[0] }}-group">{{ group[0] }}</a>
+</h1>
+
+<div class="panel-group" role="tablist">
+
+    {% for endpoint in group[1] %}
+    <div class="panel panel-default endpoint">
+
+        <div class="panel-heading" role="tab">
+            <div class="row">
+                <div class="col-md-{{ endpoint.template_title_length }}" onclick="showPanelBody(this)">
+                    <h4 class="panel-title title" id="requestUrl"><i
+                            class="fa fa-link"></i><span>{{ endpoint.path }}</span>&nbsp;&nbsp;{{ endpoint.desc }}
+                        {% if endpoint.docstring %}
+                        &nbsp;
+                        <img src="{{ static_url('docs/images/info.png') }}"
+                             alt="" style="width:25px;height:25px;">
+                        {% end %}
+                    </h4>
+                </div>
+
+                <div class="col-md-{{ endpoint.template_method_length }}">
+                    <ul class="list-inline methods">
+                        {% for method in endpoint.allowed_methods %}
+                        <li class="method {{ lower(method) }}" data-toggle="modal"
+                            data-target="#requestModal"
+                            data-params="{{ endpoint.params_json }}"
+                            data-headers="{{ endpoint.headers_json }}"
+                        >{{ method }}
+                        </li>
+                        {% end %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div id="" class="panel-collapse collapse" role="tabpanel"
+             aria-expanded="true"
+             style="">
+            <div class="panel-body">
+                <p class="lead"></p>
+                {% if endpoint.docstring %}
+                <p>
+                    {{ endpoint.docstring }}
+                </p>
+                {% else %}
+                <p>No more information.</p>
+                {% end %}
+
+            </div>
+        </div>
+    </div>
+    {% end %}
+
+</div>
+
+{% end %}
+
+<!-- 右侧悬浮导航开始 -->
+<div class="right-summary">
+    <ul>
+        {% for group in endpoints %}
+        <li><a href="#{{ group[0] }}-group">{{ group[0] }}</a></li>
+        {% end %}
+    </ul>
+</div>
+<!-- 右侧悬浮导航结束 -->
+{% if endpoints %}
+
+{% elif not query %}
+<h2 class="text-center">There are currently no api endpoints to document.</h2>
+{% else %}
+<h2 class="text-center">No endpoints found for {{ query }}.</h2>
+{% end %}
+
+<!-- getModal -->
+<div class="modal fade api-modal" id="requestModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog modal-lg" role="document" style="width: 80%;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                        aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="titleMethod"></h4>
+            </div>
+            <div id="liveAPIEndpoints">
+                <form class="form-horizontal" id="requestForm">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6 request">
+                                <div><h3>Request</h3>
+                                    <div><h5 class="section-title">API
+                                        Endpoint</h5>
+                                        <div class="form-group">
+                                            <label
+                                                    for="Url Endpoint" class="col-sm-4 control-label">
+                                                        <span
+                                                        >Url</span></label>
+                                            <div class="col-sm-8">
+                                                <input type="text" class="form-control input-sm" id="Endpoint"
+                                                       placeholder="Url"
+                                                       value="">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-center"><h5 class="section-title"
+                                    >
+                                        Method</h5>
+                                        <div class="btn-group methods" id="requestMethod">
+                                                    <span class="btn btn-sm method get active"
+                                                    >GET</span>
+                                        </div>
+                                    </div>
+                                    <div id="requestHeaders"><h5 class="section-title"
+                                    >Headers</h5>
+                                        <div class="form-group"><label
+                                                for="authorization" class="col-sm-4 control-label"
+                                        ><span
+                                        >authorization</span></label>
+                                            <div class="col-sm-8"><input
+                                                    class="form-control input-sm" id="authorization"
+                                                    placeholder="Token 1234567890" value=""
+                                            ></div>
+                                        </div>
+                                    </div>
+                                    <noscript></noscript>
+                                    <div id="requestParams">
+                                        <h5 class="section-title">Params</h5>
+                                        <div class="form-group">
+                                            <label class="col-sm-4 control-label">
+                                                Field Name</label>
+                                            <div class="col-sm-5">
+                                                <input type="text"
+                                                       class="form-control input-sm"
+                                                       placeholder="ie. email_address"
+                                                       value=""
+                                                >
+                                            </div>
+                                            <div class="col-sm-3">
+                                                <span class="label label-info">str</span>
+                                                <span class="label label-primary label-required"
+                                                      title="Required">R</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 response" id="response">
+                                <div><h3>Response</h3>
+                                    <p class="lead text-center">Awaiting request...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">
+                            Close
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="sendRequest(this)">Send</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- token modal -->
+<div class="modal fade api-modal in" id="tokenModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog modal-sm" role="document" style="width: 50%;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                        aria-hidden="true">×</span></button>
+                <h4 class="modal-title" id="titleMethod">Authorization</h4>
+            </div>
+            <div id="liveAPIEndpoints">
+                <div class="text-center">
+                    <h5 class="section-title">
+                        Authorization <span class="label label-warning">Bearer</span>
+                    </h5>
+                    <div class="form-group">
+                        <textarea id="localToken" cols="10" rows="5" class="form-control"
+                                  style="width: 60%;margin: 0 auto;resize:none;"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">
+                        Close
+                    </button>
+                    <button type="button" class="btn btn-success" data-dismiss="modal" onclick="saveToken()">Save
+                    </button>
+                    <button type="button" class="btn btn-primary" data-dismiss="modal" onclick="clearToken()">
+                        Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<a class="back-top-button">
+    <img src="{{ static_url('docs/images/top.png') }}" alt="" style="width:25px;height:25px;">
+</a>
+<script src="{{ static_url('docs/js/jquery-3.1.1.min.js') }}"></script>
+<script src="{{ static_url('docs/js/bootstrap.min.js') }}"></script>
+<script src="{{ static_url('docs/js/main.js') }}"></script>
+<script>
+
+    function Logout() {
+        document.cookie = 'docs_token="";path=/';
+        window.location.href = "/tornado_docs/login"
+    }
+    // 锚点
+    $("a[href*=\\#]:not([href=\\#])").click(function () {
+        if (location.pathname.replace(/^\//, '') == this.pathname.replace(/^\//, '') && location.hostname == this.hostname) {
+            var $target = $(decodeURI(this.hash));
+            $target = $target.length && $target || $('[name=' + this.hash.slice(1) + ']');
+            if ($target.length) {
+                var targetOffset = $target.offset().top;
+                $('html,body').animate({
+                        scrollTop: targetOffset
+                    },
+                    500);
+                return false;
+            }
+        }
+    });
+
+    $("a.back-top-button").click(function () {
+        $("html,body").animate({scrollTop: 0}, 500);
+    });
+
+</script>
+
+{% end %}
+
