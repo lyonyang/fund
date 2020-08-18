@@ -3,7 +3,7 @@
 # __author__ = Lyon
 
 """
-TODO : 基金模拟
+基金模拟
 """
 
 from base.auth import login_required

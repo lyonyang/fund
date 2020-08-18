@@ -73,7 +73,7 @@ class MongoModel(Document):
         return cls._meta.get('collection', re.sub(HUMP_REGEX, r'\1_\2', cls.__name__))
 
     @classmethod
-    async def create_one(cls, **values) -> Document or None:
+    async def create_one(cls, **values):
         document = cls(**values)
         result = await cls.objects.insert_one(document.to_mongo())
         try:
@@ -84,7 +84,7 @@ class MongoModel(Document):
             return None
 
     @classmethod
-    async def create_many(cls, *values) -> list or None:
+    async def create_many(cls, *values):
         result = await cls.objects.insert_many([cls(**i).to_mongo() for i in values])
         try:
             return result.inserted_ids
