@@ -68,7 +68,7 @@ class DevelopConfig(GlobalConfig):
         'host': '127.0.0.1',
         'db': 'fund',
         'username': 'root',
-        'password': 'mysql123456',
+        'password': 'mysql',
         'port': 3306
     }
 
@@ -80,7 +80,7 @@ class DevelopConfig(GlobalConfig):
         'port': 27017,
         'db': 'fund',
         'username': 'root',
-        'password': 'mongodb123456',
+        'password': 'mongodb',
     }
 
     # Redis
@@ -89,7 +89,7 @@ class DevelopConfig(GlobalConfig):
         'min_connections': 1,
         'host': '127.0.0.1',
         'db': 0,
-        'password': 'redis123456',
+        'password': 'redis',
         'port': 6379
     }
 
