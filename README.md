@@ -1,13 +1,37 @@
 # 基金管理系统
 
-## TODO
+基于 `Tornado` 的一个基金管理网站 , 当然基金只是一个 `Demo` , 其目的是为了更好的交流 `Tornado`
 
-改变数据获取方式
+技术栈 : Tornado + Peewee + Peewee-async + aioredis + motor + mongoengine + Nginx + Supervisor
+
+## 项目结构
+
+```
+fund
+├── api
+│   ├── fund        基金相关API
+│   ├── users       用户相关API
+│   └── status      状态码
+├── apps
+│   ├── fund        基金相关Model
+│   └── users       用户相关Model
+├── base            Tornado App 封装
+├── db              数据库等异步化
+├── deploy          部署相关文件
+├── docs            API文档相关
+├── lib             库 
+├── script          项目相关脚本
+├── utils           工具包
+├── build.py        打包加密脚本
+├── config.py       配置文件
+├── manage.py       数据库迁移相关
+└── run.py          项目启动文件
+```
 
 
-## Deploy
+## 部署
 
-### 启动Tornado服务
+### 后台启动Tornado服务
 
 ```bash
 nohup python3 run.py > run.log 2>&1 &
@@ -30,14 +54,17 @@ Nginx安装位置 : `/usr/locl/nginx`
 重启Tornado服务 : `supervisorctl restart fund`
 
 
-## Async/Await
+### requirements.txt维护
 
-关于 `async` 与 `await` , 这两者使用对象必须是 `Awaitable` 对象
+先安装 `pipreqs`
 
-## 更新requirements.txt
+```bash
+$ pip install pipreqs
+```
+更新 `requirements.txt`
 
-```shell
->>> pipreqs . --force
+```bash
+$ pipreqs . --force
 ```
 
 
