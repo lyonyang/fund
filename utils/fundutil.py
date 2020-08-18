@@ -32,7 +32,7 @@ class FundData:
         re.X)
 
     @classmethod
-    async def get_date_net_worth(cls, code, date) -> float or None:
+    async def get_date_net_worth(cls, code, date):
         days = (dt.yesterday() - dt.str_to_dt(date, "%Y-%m-%d")).days + 1
         total_count = 0
         weekend = set(list([5, 6]))
@@ -56,7 +56,7 @@ class FundData:
         return float(net_worth_map[date])
 
     @classmethod
-    async def get_fund_name(cls, code) -> str or None:
+    async def get_fund_name(cls, code):
         """
         获取基金名称
         :param code:
@@ -74,7 +74,7 @@ class FundData:
         return fund_name
 
     @classmethod
-    async def get_current_net_worth(cls, code) -> float or None:
+    async def get_current_net_worth(cls, code):
         """
         获取当前净值
         :param code:
@@ -92,7 +92,7 @@ class FundData:
         return float(cur_net_worth)
 
     @classmethod
-    async def get_pre_net_worth(cls, code) -> float or None:
+    async def get_pre_net_worth(cls, code):
         """
         获取昨日净值
         :param code:

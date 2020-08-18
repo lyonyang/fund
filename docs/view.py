@@ -23,9 +23,7 @@ def before_request(f):
 
 
 def after_request(f):
-    """
-    Add global middleware of after request.
-    """
+    """Add global middleware of after request."""
     RequestHandler._after_request_funcs.append(f)
     return f
 
@@ -142,9 +140,7 @@ class RequestHandler(tornado.web.RequestHandler):
         return self.token_encode(0)
 
     def token_encode(self, user_id):
-        """
-        Generate token.
-        """
+        """Generate token."""
 
         payload = {
             'exp': datetime.datetime.utcnow() + datetime.timedelta(days=current_config.docs_token_expire_days),
@@ -164,9 +160,7 @@ class RequestHandler(tornado.web.RequestHandler):
         return token
 
     def token_decode(self, auth_token):
-        """
-        Decode token.
-        """
+        """Decode token."""
 
         try:
             # verify_exp
@@ -176,6 +170,10 @@ class RequestHandler(tornado.web.RequestHandler):
             return data
         except Exception:
             return None
+
+    def _log(self):
+        """self.finish() will second call."""
+        pass
 
     def log_request(self):
         date_string = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")

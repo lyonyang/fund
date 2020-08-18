@@ -2,12 +2,12 @@
 
 ## TODO
 
-数据存储优化
+改变数据获取方式
 
 
-## 部署
+## Deploy
 
-### 后台启动
+### 启动Tornado服务
 
 ```bash
 nohup python3 run.py > run.log 2>&1 &
@@ -21,7 +21,7 @@ Nginx安装位置 : `/usr/locl/nginx`
 
 重启 : `/usr/local/sbin/nginx -s reload`
 
-### Supervisor部署
+### Supervisor
 
 启动Supervisor : `supervisord  -c /mydata/projects/fund/deploy/supervisor/default.conf`
 
@@ -34,6 +34,11 @@ Nginx安装位置 : `/usr/locl/nginx`
 
 关于 `async` 与 `await` , 这两者使用对象必须是 `Awaitable` 对象
 
+## 更新requirements.txt
+
+```shell
+>>> pipreqs . --force
+```
 
 
 

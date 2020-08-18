@@ -65,10 +65,10 @@ class DevelopConfig(GlobalConfig):
     mysql_config = {
         'max_connections': 100,
         'stale_timeout': 300,
-        'host': '127.0.0.1',
+        'host': '121.37.242.252',
         'db': 'fund',
         'username': 'root',
-        'password': 'mysql',
+        'password': 'mysql123456',
         'port': 3306
     }
 
@@ -76,26 +76,26 @@ class DevelopConfig(GlobalConfig):
     mongo_config = {
         'max_connections': 100,
         'min_connections': 1,
-        'host': '127.0.0.1',
+        'host': '121.37.242.252',
         'port': 27017,
         'db': 'fund',
         'username': 'root',
-        'password': 'mongodb',
+        'password': 'mongodb123456',
     }
 
     # Redis
     redis_config = {
         'max_connections': 100,
         'min_connections': 1,
-        'host': '127.0.0.1',
+        'host': '121.37.242.252',
         'db': 0,
-        'password': 'redis',
+        'password': 'redis123456',
         'port': 6379
     }
 
     # MQ
     mq_config = {
-        'host': '127.0.0.1',
+        'host': '121.37.242.252',
         'port': 15762,
         'username': 'guest',
         'password': 'guest'
