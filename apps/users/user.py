@@ -3,7 +3,7 @@
 # __author__ = Lyon
 
 import hashlib
-from base import current_config as config
+from base import config
 from db.mysql import MySQLModel
 from peewee import (
     DateTimeField, IntegerField, CharField

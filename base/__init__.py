@@ -11,19 +11,21 @@ import tornado.web
 
 PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(PROJECT_ROOT, os.pardir, os.pardir))
+
 from base.config import BaseConfig
 
 try:
-    from .. import config
+    from .. import config as project_conf
 except:
     import importlib
 
-    config = importlib.import_module('fund.config')
-
-current_app = None
-current_config = BaseConfig()
+    project_conf = importlib.import_module('fund.config')
 
 from base.log import TornadoLogger
+
+# TODO: Thread-local
+app = None
+config = None
 
 
 def run(app, port=8000):
@@ -38,20 +40,20 @@ def run(app, port=8000):
 
 
 def make_app(env):
-    global current_config, current_app
+    global app, config
 
     if isinstance(env, str):
-        config_cls = config.config_env.get(env)
-        current_config = config_cls()
+        config_cls = project_conf.config_env.get(env)
+        config = config_cls()
         assert issubclass(config_cls, BaseConfig), \
             "%s not have to_dict method." % config_cls.__name__
     elif isinstance(env, dict):
         config_cls = BaseConfig
-        current_config = config_cls().from_dict(**env)
+        config = config_cls().from_dict(**env)
     else:
         raise TypeError
 
-    options = current_config.to_dict()
+    options = config.to_dict()
     # 关闭Tornado原日志
     options['logging'] = 'none'
 
@@ -60,17 +62,14 @@ def make_app(env):
     # 请求日志
     after_request(RequestHandler.log_request)
 
-    app = tornado.web.Application(route.handlers, **options)
-    current_app = app
-    app.env = env if isinstance(env, str) else env.__name__
-    app.loop = tornado.ioloop.IOLoop.current()
-    app.run = types.MethodType(run, app)
+    application = tornado.web.Application(route.handlers, **options)
+    application.env = env if isinstance(env, str) else env.__name__
+    application.loop = tornado.ioloop.IOLoop.current()
+    application.config = config
+    application.run = types.MethodType(run, application)
+    application.run_sync = application.loop.run_sync
+    application.__class__.logger = TornadoLogger(config).logger
 
-    app.__class__.logger = TornadoLogger(current_config).logger
-    return app
+    app = application
 
-
-def get_io_loop():
-    if current_app:
-        return current_app.loop
-    return tornado.ioloop.IOLoop.current().run_sync()
+    return application

@@ -11,7 +11,7 @@ import importlib
 import inspect
 import json
 import tornado.web
-from base import current_config
+from base import config
 from .view import DocsHandler, DocsLoginHandler, DocsMarkdownHandler
 
 
@@ -52,9 +52,9 @@ def check_param(params):
 
 def define_api(url, params=None, headers=None, desc='', display=True):
     docs_params = list(params) if params else []
-    docs_params.extend(current_config.docs_global_params)
+    docs_params.extend(config.docs_global_params)
     docs_headers = list(headers) if headers else []
-    docs_headers.extend(current_config.docs_global_headers)
+    docs_headers.extend(config.docs_global_headers)
     docs_params = check_param(docs_params)
     docs_headers = check_param(docs_headers)
 
@@ -83,7 +83,7 @@ class Endpoint(object):
         self.docstring = self.get_doc()
         self.desc = desc
         self.name_parent = name_parent.split('.')[-1].title()
-        alias = current_config.install_handlers_name.get(name_parent) or None
+        alias = config.install_handlers_name.get(name_parent) or None
         if alias:
             self.name_parent = alias
 
@@ -195,7 +195,7 @@ class Router(metaclass=_RouterMetaclass):
         Return a list of URL patterns, given the registered handlers.
         """
         handlers_map = {}
-        if current_config.debug:
+        if config.debug:
             handlers_map['/tornado_docs'] = DocsHandler
             handlers_map['/tornado_docs/'] = DocsHandler
             handlers_map['/tornado_docs/login'] = DocsLoginHandler
@@ -203,7 +203,7 @@ class Router(metaclass=_RouterMetaclass):
             handlers_map['/tornado_docs/markdown'] = DocsMarkdownHandler
             handlers_map['/tornado_docs/markdown/'] = DocsMarkdownHandler
 
-        for handler in current_config.install_handlers:
+        for handler in config.install_handlers:
             import_string(handler + '.__name__')
 
         for module, param in self._registry.items():

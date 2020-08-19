@@ -8,7 +8,7 @@ Peewee-async Document : https://peewee-async.readthedocs.io/en/latest/index.html
 """
 
 from lib.dt import dt
-from base import current_config as config
+from base import config
 from peewee import Model, AutoField, DateTimeField, IntegerField, Query
 from peewee_async import Manager as BaseManager, PooledMySQLDatabase
 

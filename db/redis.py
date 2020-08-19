@@ -12,8 +12,8 @@ import time
 import tornado.gen
 import aioredis
 import tornado.ioloop
+from base import config
 from aioredis import ConnectionsPool
-from base import current_config as config
 
 """
 Sync Redis:
@@ -79,6 +79,19 @@ class AsyncRedis:
             return await conn.execute(self.GET, name)
 
 
+try:
+    async_redis = AsyncRedis(
+        config.redis_config['host'],
+        config.redis_config['port'],
+        config.redis_config['db'],
+        config.redis_config['password'],
+        config.redis_config['min_connections'],
+        config.redis_config['max_connections']
+    )
+except:
+    async_redis = None
+
+
 class AsyncLock:
     LOCK_PRE = 'lock:'
 
@@ -122,20 +135,4 @@ class AsyncLock:
         return False
 
 
-try:
-    async_redis = AsyncRedis(config.redis_config['host'], config.redis_config['port'], config.redis_config['db'],
-                             config.redis_config['password'], config.redis_config['min_connections'],
-                             config.redis_config['max_connections'])
-except:
-    async_redis = None
 async_lock = AsyncLock(async_redis)
-
-if __name__ == '__main__':
-    from tornado.ioloop import IOLoop
-
-
-    async def main():
-        return await async_lock.acquire_lock('name')
-
-
-    print(IOLoop.current().run_sync(main))

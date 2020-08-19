@@ -10,11 +10,11 @@ Motor for query : https://motor.readthedocs.io/en/stable/api-tornado/motor_colle
 
 import re
 from lib.dt import dt
-from motor.metaprogramming import create_class_with_framework
+from base import config
+from mongoengine import Document, fields
 from motor.core import AgnosticCollection
 from motor.motor_tornado import MotorClient
-from base import current_config as config
-from mongoengine import Document, fields
+from motor.metaprogramming import create_class_with_framework
 
 client = MotorClient(
     host=config.mongo_config['host'],
@@ -47,10 +47,6 @@ class Collection(AgnosticCollection):
 class MongoModel(Document):
     DELETE_NO = 0
     DELETE_IS = 1
-
-    meta = {
-        'collection': 'test_mongo'
-    }
 
     database = mongo_db
 
@@ -104,14 +100,3 @@ class MongoModel(Document):
 
     def __str__(self):
         return "%s object [%s]" % (self.__class__.__name__, self.pk or self._id)
-
-
-if __name__ == '__main__':
-    from tornado.ioloop import IOLoop
-
-
-    async def main():
-        return await MongoModel.create_one()
-
-
-    print(IOLoop.current().run_sync(main))

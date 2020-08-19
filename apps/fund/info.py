@@ -2,8 +2,6 @@
 # -*- coding:utf-8 -*-
 # __author__ = Lyon
 
-import hashlib
-from base import current_config as config
 from db.mysql import MySQLModel
 from peewee import CharField
 

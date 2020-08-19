@@ -11,7 +11,6 @@ import tornado.web
 from typing import Any
 from lib.dt import dt
 from api.status import Code, Message
-from base import current_config
 
 
 def before_request(f):
@@ -46,18 +45,22 @@ class RequestHandler(tornado.web.RequestHandler):
         self.before_request_funcs = []
         self.after_request_funcs = []
 
+    @property
+    def app(self):
+        return self.application
+
     def set_default_headers(self):
-        allow_origin = current_config.cors_allow_origin
-        if isinstance(current_config.cors_allow_origin, list):
-            allow_origin = ','.join(current_config.cors_allow_origin)
+        allow_origin = self.app.config.cors_allow_origin
+        if isinstance(self.app.config.cors_allow_origin, list):
+            allow_origin = ','.join(self.app.config.cors_allow_origin)
 
-        allow_headers = current_config.cors_allow_headers
-        if isinstance(current_config.cors_allow_headers, list):
-            allow_headers = ','.join(current_config.cors_allow_headers)
+        allow_headers = self.app.config.cors_allow_headers
+        if isinstance(self.app.config.cors_allow_headers, list):
+            allow_headers = ','.join(self.app.config.cors_allow_headers)
 
-        allow_method = current_config.cors_allow_method
-        if isinstance(current_config.cors_allow_method, list):
-            allow_method = ','.join(current_config.cors_allow_method)
+        allow_method = self.app.config.cors_allow_method
+        if isinstance(self.app.config.cors_allow_method, list):
+            allow_method = ','.join(self.app.config.cors_allow_method)
 
         self.set_header("Access-Control-Allow-Origin", allow_origin)
         self.set_header("Access-Control-Allow-Headers", allow_headers)
@@ -66,11 +69,6 @@ class RequestHandler(tornado.web.RequestHandler):
     @property
     def user_id(self):
         return self.current_user_id
-
-    @property
-    def app(self):
-        """tornado.web.Application"""
-        return self.application
 
     def prepare(self):
         for func in (self._before_request_funcs + self.before_request_funcs):
@@ -143,7 +141,7 @@ class RequestHandler(tornado.web.RequestHandler):
         """Generate token."""
 
         payload = {
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=current_config.docs_token_expire_days),
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=self.app.config.docs_token_expire_days),
             'iat': datetime.datetime.utcnow(),
             'iss': 'Lyon',
             'data': {
@@ -151,7 +149,7 @@ class RequestHandler(tornado.web.RequestHandler):
                 'login_time': datetime.datetime.now().strftime("%Y-%m-%D %H:%M:%S")
             }
         }
-        secret_key = current_config.docs_token_secret_key
+        secret_key = self.app.config.docs_token_secret_key
         token = jwt.encode(
             payload,
             secret_key,
@@ -164,8 +162,8 @@ class RequestHandler(tornado.web.RequestHandler):
 
         try:
             # verify_exp
-            payload = jwt.decode(auth_token, current_config.docs_token_secret_key,
-                                 options={'verify_exp': current_config.docs_token_verify_expire})
+            payload = jwt.decode(auth_token, self.app.config.docs_token_secret_key,
+                                 options={'verify_exp': self.app.config.docs_token_verify_expire})
             data = payload['data']
             return data
         except Exception:
@@ -326,7 +324,7 @@ class DocsLoginHandler(RequestHandler):
     async def post(self):
         username = self.get_argument('username')
         password = self.get_argument('password')
-        if username == current_config.docs_username and password == current_config.docs_password:
+        if username == self.app.config.docs_username and password == self.app.config.docs_password:
             return self.write_success({'docs_token': self.get_docs_token()})
         return self.write_fail(Code.USERNAME_OR_PASSWORD_INVALID, Message.USERNAME_OR_PASSWORD_INVALID)
 
