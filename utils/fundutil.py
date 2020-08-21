@@ -4,6 +4,7 @@
 
 import re
 import time
+import json
 import datetime
 from lib.dt import dt
 from lxml import etree
@@ -24,6 +25,9 @@ class FundData:
     # 基金信息
     # 示例: http://fund.eastmoney.com/001618.html?spm=search
     FUND_INFO_URL = 'http://fund.eastmoney.com/%s.html?spm=search'
+
+    # 基金净值
+    FUND_NET_WORTH = 'http://fundgz.1234567.com.cn/js/%s.js?rt=%s'
 
     # 解析历史净值数据
     data_re = re.compile(r'<tr>(.*?)</tr>')
@@ -74,7 +78,7 @@ class FundData:
         return fund_name
 
     @classmethod
-    async def get_current_net_worth(cls, code):
+    async def get_current_net_worth_old(cls, code):
         """
         获取当前净值
         :param code:
@@ -90,6 +94,13 @@ class FundData:
         if len(b) != 6: return None
         cur_net_worth, date_net_worth, total_net_worth = b[0], b[3], b[5]
         return float(cur_net_worth)
+
+    @classmethod
+    async def get_current_net_worth(cls, code):
+        url = cls.FUND_NET_WORTH % (code, int(time.time()))
+        response = await cls.client.fetch(url)
+        data = json.loads(response.body.decode()[8: -2])
+        return float(data['gsz'])
 
     @classmethod
     async def get_pre_net_worth(cls, code):
@@ -116,7 +127,8 @@ if __name__ == '__main__':
 
 
     async def main():
-        return await FundData.get_fund_name('001618')
+        # return await FundData.get_current_net_worth('009308')
+        return await FundData.test('009308')
 
 
     result = IOLoop.current().run_sync(main)

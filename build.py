@@ -79,7 +79,7 @@ def copy_ignore(dist):
 
 
 def build(dist='dist'):
-    """py -> c - so"""
+    """py -> c -> so"""
     start = time.time()
     files = list(ls())
     module_list = list()
