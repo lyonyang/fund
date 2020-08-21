@@ -57,8 +57,9 @@ class MyFundList(RequestHandler):
     ], desc='我的基金')
     @login_required
     async def get(self):
-        records = TradeRecord.select().where(TradeRecord.user_id == self.user_id,
-                                             TradeRecord.is_delete == TradeRecord.DELETE_NO).order_by(TradeRecord.date)
+        records = await TradeRecord.objects.execute(TradeRecord.select().where(TradeRecord.user_id == self.user_id,
+                                                                               TradeRecord.is_delete == TradeRecord.DELETE_NO).order_by(
+            TradeRecord.date))
         map = dict()
         for record in records:
             if record.code in map:
