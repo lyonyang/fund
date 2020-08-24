@@ -2,6 +2,8 @@
 # -*- coding:utf-8 -*-
 # __author__ = Lyon
 
+# TODO: About render build?
+
 import os
 import time
 import shutil

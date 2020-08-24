@@ -45,7 +45,7 @@ class TradeRecord(MySQLModel):
                                                           type=type)
         return _obj
 
-    def normal_info(self):
+    async def normal_info(self):
         data = super(TradeRecord, self).normal_info()
         data.update({
             'code': self.code,
@@ -53,7 +53,7 @@ class TradeRecord(MySQLModel):
             'net_worth': '%.04f' % (self.net_worth / 10000),
             'date': self.date_to_str(self.date),
             'type': self.type,
-            'fund_name': self.fund_name or self.update_fund_name(),
+            'fund_name': self.fund_name or await self.update_fund_name(),
             'copies': round(self.copies, 2),
         })
         return data

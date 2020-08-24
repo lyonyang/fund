@@ -53,10 +53,13 @@ class TradeRecordList(RequestHandler):
     ], desc='交易记录列表')
     @login_required
     async def get(self):
-        records = await TradeRecord.objects.execute(TradeRecord.select().where(TradeRecord.user_id == self.user_id,
-                                             TradeRecord.is_delete == TradeRecord.DELETE_NO).order_by(
-            TradeRecord.date.desc()))
+        records = await TradeRecord.objects.execute(TradeRecord.select().where(
+            TradeRecord.user_id == self.user_id,
+            TradeRecord.is_delete == TradeRecord.DELETE_NO
+        ).order_by(
+            TradeRecord.date.desc())
+        )
         data = []
         for record in records:
-            data.append(record.normal_info())
+            data.append(await record.normal_info())
         return self.write_success(data=data)
