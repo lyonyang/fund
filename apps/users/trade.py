@@ -3,10 +3,11 @@
 # __author__ = Lyon
 
 
-from db.mysql import MySQLModel
 from peewee import (
     IntegerField, CharField, DateField, DoubleField
 )
+
+from base.db.mysql import MySQLModel
 from utils.fundutil import FundData
 
 

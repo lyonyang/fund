@@ -17,13 +17,13 @@ from motor.motor_tornado import MotorClient
 from motor.metaprogramming import create_class_with_framework
 
 client = MotorClient(
-    host=config.mongo_config['host'],
-    port=config.mongo_config['port'],
-    username=config.mongo_config['username'],
-    password=config.mongo_config['password'],
-    maxPoolSize=config.mongo_config['max_connections'],
-    minPoolSize=config.mongo_config['min_connections'],
-    authSource=config.mongo_config['db'],
+    host=config.MONGO_CONFIG['host'],
+    port=config.MONGO_CONFIG['port'],
+    username=config.MONGO_CONFIG['username'],
+    password=config.MONGO_CONFIG['password'],
+    maxPoolSize=config.MONGO_CONFIG['max_connections'],
+    minPoolSize=config.MONGO_CONFIG['min_connections'],
+    authSource=config.MONGO_CONFIG['db'],
     authMechanism='SCRAM-SHA-1'
 )
 

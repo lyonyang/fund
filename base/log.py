@@ -15,19 +15,19 @@ class TornadoLogger(object):
         self.format = logging.Formatter(
             '%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(lineno)s - %(message)s')
         self.config = config
-        for level in self.config.log_handler:
+        for level in self.config.LOG_HANDLER:
             level_name = logging._levelToName.get(level)
             self.add_handler(self.logger, level, level_name)
             self.add_console(self.logger, level)
 
-        if self.config.debug:
+        if self.config.DEBUG:
             self.add_console(self.logger, logging.DEBUG)
 
     def add_handler(self, logger, level, level_name):
         file_name = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
-        dir = self.config.project_root + os.sep + \
-              self.config.log_path + os.sep + \
+        dir = self.config.PROJECT_ROOT + os.sep + \
+              self.config.LOG_PATH + os.sep + \
               level_name.lower()
 
         path = dir + os.sep + file_name + '.log'

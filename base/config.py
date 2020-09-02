@@ -8,40 +8,41 @@ import logging
 
 class BaseConfig:
     """Project base settings"""
-    project_root = os.path.realpath(os.path.dirname(__file__))
-    install_handlers = []
-    install_handlers_name = {}
+    PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__))
+    INSTALL_HANDLERS = list()
+    INSTALL_HANDLERS_NAME = dict()
 
     ################
     # Tornado Docs #
     ################
-    docs_username = 'admin'
-    docs_password = 'admin'
-    docs_global_params = []
-    docs_global_headers = []
-    docs_token_verify_expire = True
-    docs_token_expire_days = 7
-    docs_token_secret_key = '8i-!yfmt+hk@-$e7%wl2hx#!v7+rjdc%s8udl0a_*um0l)++y%'
+    DOCS_USERNAME = 'admin'
+    DOCS_PASSWORD = 'admin'
+    DOCS_GLOBAL_PARAMS = []
+    DOCS_GLOBAL_HEADERS = []
+    DOCS_TOKEN_VERIFY_EXPIRE = True
+    DOCS_TOKEN_EXPIRE_DAYS = 7
+    DOCS_TOKEN_SECRET_KEY = '8i-!yfmt+hk@-$e7%wl2hx#!v7+rjdc%s8udl0a_*um0l)++y%'
 
     # APP
-    static_path = 'static'
-    log_path = 'logs'
-    log_handler = [
+    STATIC_PATH = 'static'
+    LOG_PATH = 'logs'
+    LOG_HANDLER = [
         logging.INFO,
         logging.WARNING,
         logging.ERROR
     ]
 
-    debug = True
+    DEBUG = True
 
-    request_allow_origin = ['*']
-    request_allow_headers = ['*']
+    REQUEST_ALLOW_ORIGIN = ['*']
+    REQUEST_ALLOW_HEADERS = ['*']
 
     def to_dict(self):
+        """lower settings"""
         settings = {}
         for key in dir(self):
             if not key.startswith('__'):
-                settings[key] = getattr(self, key)
+                settings[key.lower()] = getattr(self, key)
         return settings
 
     def from_dict(self, d, **kwargs):

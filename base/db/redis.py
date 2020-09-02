@@ -20,11 +20,11 @@ Sync Redis:
 
     >>> import redis
     >>> redis_pool = redis.ConnectionPool(
-    >>>     max_connections=config.redis_config['max_connections'],
-    >>>     host=config.redis_config['host'],
-    >>>     db=config.redis_config['db'],
-    >>>     password=config.redis_config['password'],
-    >>>     port=config.redis_config['port'],
+    >>>     max_connections=config.REDIS_CONFIG['max_connections'],
+    >>>     host=config.REDIS_CONFIG['host'],
+    >>>     db=config.REDIS_CONFIG['db'],
+    >>>     password=config.REDIS_CONFIG['password'],
+    >>>     port=config.REDIS_CONFIG['port'],
     >>> )
     >>> conn = redis.Redis(connection_pool=redis_pool, decode_responses=True)
 """
@@ -81,12 +81,12 @@ class AsyncRedis:
 
 try:
     async_redis = AsyncRedis(
-        config.redis_config['host'],
-        config.redis_config['port'],
-        config.redis_config['db'],
-        config.redis_config['password'],
-        config.redis_config['min_connections'],
-        config.redis_config['max_connections']
+        config.REDIS_CONFIG['host'],
+        config.REDIS_CONFIG['port'],
+        config.REDIS_CONFIG['db'],
+        config.REDIS_CONFIG['password'],
+        config.REDIS_CONFIG['min_connections'],
+        config.REDIS_CONFIG['max_connections']
     )
 except:
     async_redis = None

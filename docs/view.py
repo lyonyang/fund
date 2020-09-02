@@ -50,17 +50,17 @@ class RequestHandler(tornado.web.RequestHandler):
         return self.application
 
     def set_default_headers(self):
-        allow_origin = self.app.config.cors_allow_origin
-        if isinstance(self.app.config.cors_allow_origin, list):
-            allow_origin = ','.join(self.app.config.cors_allow_origin)
+        allow_origin = self.app.config.CORS_ALLOW_ORIGIN
+        if isinstance(self.app.config.CORS_ALLOW_ORIGIN, list):
+            allow_origin = ','.join(self.app.config.CORS_ALLOW_ORIGIN)
 
-        allow_headers = self.app.config.cors_allow_headers
-        if isinstance(self.app.config.cors_allow_headers, list):
-            allow_headers = ','.join(self.app.config.cors_allow_headers)
+        allow_headers = self.app.config.CORS_ALLOW_HEADERS
+        if isinstance(self.app.config.CORS_ALLOW_HEADERS, list):
+            allow_headers = ','.join(self.app.config.CORS_ALLOW_HEADERS)
 
-        allow_method = self.app.config.cors_allow_method
-        if isinstance(self.app.config.cors_allow_method, list):
-            allow_method = ','.join(self.app.config.cors_allow_method)
+        allow_method = self.app.config.CORS_ALLOW_METHOD
+        if isinstance(self.app.config.CORS_ALLOW_METHOD, list):
+            allow_method = ','.join(self.app.config.CORS_ALLOW_METHOD)
 
         self.set_header("Access-Control-Allow-Origin", allow_origin)
         self.set_header("Access-Control-Allow-Headers", allow_headers)
@@ -141,7 +141,7 @@ class RequestHandler(tornado.web.RequestHandler):
         """Generate token."""
 
         payload = {
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=self.app.config.docs_token_expire_days),
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=self.app.config.DOCS_TOKEN_EXPIRE_DAYS),
             'iat': datetime.datetime.utcnow(),
             'iss': 'Lyon',
             'data': {
@@ -149,7 +149,7 @@ class RequestHandler(tornado.web.RequestHandler):
                 'login_time': datetime.datetime.now().strftime("%Y-%m-%D %H:%M:%S")
             }
         }
-        secret_key = self.app.config.docs_token_secret_key
+        secret_key = self.app.config.DOCS_TOKEN_SECRET_KEY
         token = jwt.encode(
             payload,
             secret_key,
@@ -162,8 +162,8 @@ class RequestHandler(tornado.web.RequestHandler):
 
         try:
             # verify_exp
-            payload = jwt.decode(auth_token, self.app.config.docs_token_secret_key,
-                                 options={'verify_exp': self.app.config.docs_token_verify_expire})
+            payload = jwt.decode(auth_token, self.app.config.DOCS_TOKEN_SECRET_KEY,
+                                 options={'verify_exp': self.app.config.DOCS_TOKEN_VERIFY_EXPIRE})
             data = payload['data']
             return data
         except Exception:
@@ -324,7 +324,7 @@ class DocsLoginHandler(RequestHandler):
     async def post(self):
         username = self.get_argument('username')
         password = self.get_argument('password')
-        if username == self.app.config.docs_username and password == self.app.config.docs_password:
+        if username == self.app.config.DOCS_USERNAME and password == self.app.config.DOCS_PASSWORD:
             return self.write_success({'docs_token': self.get_docs_token()})
         return self.write_fail(Code.USERNAME_OR_PASSWORD_INVALID, Message.USERNAME_OR_PASSWORD_INVALID)
 

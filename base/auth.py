@@ -15,8 +15,8 @@ def login_required(method):
             type, token = self.request.headers.get('Authorization', ' ').split(' ')
             payload = jwt.decode(
                 token,
-                config.backend_token_secret_key,
-                options={'verify_exp': config.docs_token_verify_expire})
+                config.BACKEND_TOKEN_SECRET_KEY,
+                options={'verify_exp': config.DOCS_TOKEN_VERIFY_EXPIRE})
             data = payload['data']
         except Exception:
             return self.finish({'return_code': Code.TOKEN_INVALID, 'return_msg': Message.TOKEN_INVALID})

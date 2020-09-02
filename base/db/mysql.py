@@ -14,12 +14,12 @@ from peewee_async import Manager as BaseManager, PooledMySQLDatabase
 
 # Connect to a MySQL database on network.
 mysql_db = PooledMySQLDatabase(
-    config.mysql_config['db'],
-    max_connections=config.mysql_config['max_connections'],
-    user=config.mysql_config['username'],
-    password=config.mysql_config['password'],
-    host=config.mysql_config['host'],
-    port=config.mysql_config['port']
+    config.MYSQL_CONFIG['db'],
+    max_connections=config.MYSQL_CONFIG['max_connections'],
+    user=config.MYSQL_CONFIG['username'],
+    password=config.MYSQL_CONFIG['password'],
+    host=config.MYSQL_CONFIG['host'],
+    port=config.MYSQL_CONFIG['port']
 )
 
 

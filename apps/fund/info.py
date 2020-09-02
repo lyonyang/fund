@@ -2,8 +2,9 @@
 # -*- coding:utf-8 -*-
 # __author__ = Lyon
 
-from db.mysql import MySQLModel
 from peewee import CharField
+
+from base.db.mysql import MySQLModel
 
 
 class FundInfo(MySQLModel):

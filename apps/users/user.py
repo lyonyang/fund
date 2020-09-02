@@ -4,9 +4,9 @@
 
 import hashlib
 from base import config
-from db.mysql import MySQLModel
+from base.db.mysql import MySQLModel
 from peewee import (
-    DateTimeField, IntegerField, CharField
+    CharField
 )
 
 

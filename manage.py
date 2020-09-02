@@ -22,7 +22,7 @@ from base import make_app
 
 app = make_app('dev')
 
-from db.mysql import mysql_db as db
+from base.db.mysql import mysql_db as db
 from playhouse.migrate import MySQLMigrator, migrate
 from apps.users.user import FundUser
 from apps.users.trade import TradeRecord

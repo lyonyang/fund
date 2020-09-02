@@ -5,7 +5,7 @@
 import sys
 from base import make_app
 
-app = make_app('dev')
+app = make_app('test')
 
 if __name__ == '__main__':
     options = {}

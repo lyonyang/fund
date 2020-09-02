@@ -28,6 +28,24 @@ app = None
 config = None
 
 
+def load_config(env):
+    """Only load config, not app."""
+    global config
+    if config is not None:
+        return config
+    if isinstance(env, str):
+        config_cls = project_conf.config_env.get(env)
+        config = config_cls()
+        assert issubclass(config_cls, BaseConfig), \
+            "%s not have to_dict method." % config_cls.__name__
+    elif isinstance(env, dict):
+        config_cls = BaseConfig
+        config = config_cls().from_dict(**env)
+    else:
+        raise TypeError
+    return config
+
+
 def run(app, port=8000):
     app.logger.info(' * Serving Tornado app "%s"' % __name__)
     app.logger.info(' * Environment: %s' % app.env)
@@ -54,12 +72,12 @@ def make_app(env):
         raise TypeError
 
     options = config.to_dict()
-    # 关闭Tornado原日志
+    # Close tornado log
     options['logging'] = 'none'
 
     from docs import route, RequestHandler, after_request
 
-    # 请求日志
+    # Request log handler
     after_request(RequestHandler.log_request)
 
     application = tornado.web.Application(route.handlers, **options)

@@ -4,7 +4,6 @@
 
 import os
 import sys
-from tornado.ioloop import IOLoop
 
 PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(PROJECT_ROOT, os.pardir))
@@ -13,7 +12,7 @@ from base import make_app
 
 
 async def do_something():
-    from db.mongo import MongoModel
+    from base.db.mongo import MongoModel
     return await MongoModel.create_one()
 
 

@@ -7,62 +7,60 @@ import os
 from base import BaseConfig
 
 
-class GlobalConfig(BaseConfig):
-    """
-    Global Config
-    """
-    project_root = os.path.realpath(os.path.dirname(__file__))
+class Config(BaseConfig):
+    """Public config"""
+    PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__))
 
-    debug = True
+    DEBUG = True
 
-    no_keep_alive = True
+    NO_KEEP_ALIVE = True
 
     ################
     # Tornado Docs #
     ################
-    install_handlers = [
+    INSTALL_HANDLERS = [
         'api.users.user',
         'api.fund.fund',
         'api.fund.trade',
         'api.fund.simulate',
     ]
-    install_handlers_name = {
+    INSTALL_HANDLERS_NAME = {
         'api.users.user': '用户API',
         'api.fund.fund': '基金API',
         'api.fund.trade': '交易API'
     }
-    docs_username = 'admin'
-    docs_password = 'admin'
-    docs_global_params = []
-    docs_global_headers = [
+    DOCS_USERNAME = 'admin'
+    DOCS_PASSWORD = 'admin'
+    DOCS_GLOBAL_PARAMS = []
+    DOCS_GLOBAL_HEADERS = [
         ('Authorization', False, str, '')
     ]
-    docs_token_verify_expire = True
-    docs_token_expire_days = 30
-    docs_token_secret_key = '8i-!yfmt+hk@-$e7%wl2hx#!v7+rjdc%s8udl0a_*um0l)++y%'
+    DOCS_TOKEN_VERIFY_EXPIRE = True
+    DOCS_TOKEN_EXPIRE_DAYS = 30
+    DOCS_TOKEN_SECRET_KEY = '8i-!yfmt+hk@-$e7%wl2hx#!v7+rjdc%s8udl0a_*um0l)++y%'
 
     # APP
-    static_path = 'static'
-    log_path = 'logs'
-    log_handler = [
+    STATIC_PATH = 'static'
+    LOG_PATH = 'logs'
+    LOG_HANDLER = [
         logging.INFO,
         logging.WARNING,
         logging.ERROR
     ]
 
-    cors_allow_origin = ['*']
-    cors_allow_headers = ['*']
-    cors_allow_method = ['POST', 'GET', 'OPTIONS']
+    CORS_ALLOW_ORIGIN = ['*']
+    CORS_ALLOW_HEADERS = ['*']
+    CORS_ALLOW_METHOD = ['POST', 'GET', 'OPTIONS']
 
-    backend_md5_salt = '8i-!yfmt+hk@-$e7%wl2hx#!v7+rjdc%s8udl0a_*um0l)++y%'
-    backend_token_secret_key = '8i-!yfmt+hk@-$e7%wl2hx#!v7+rjdc%s8udl0a_*um0l)++y%'
+    BACKEND_MD5_SALT = '8i-!yfmt+hk@-$e7%wl2hx#!v7+rjdc%s8udl0a_*um0l)++y%'
+    BACKEND_TOKEN_SECRET_KEY = '8i-!yfmt+hk@-$e7%wl2hx#!v7+rjdc%s8udl0a_*um0l)++y%'
 
 
-class DevelopConfig(GlobalConfig):
-    debug = True
+class DevelopConfig(Config):
+    DEBUG = True
 
     # MySQL
-    mysql_config = {
+    MYSQL_CONFIG = {
         'max_connections': 100,
         'stale_timeout': 300,
         'host': '127.0.0.1',
@@ -73,7 +71,7 @@ class DevelopConfig(GlobalConfig):
     }
 
     # Mongodb
-    mongo_config = {
+    MONGO_CONFIG = {
         'max_connections': 100,
         'min_connections': 1,
         'host': '127.0.0.1',
@@ -84,7 +82,7 @@ class DevelopConfig(GlobalConfig):
     }
 
     # Redis
-    redis_config = {
+    REDIS_CONFIG = {
         'max_connections': 100,
         'min_connections': 1,
         'host': '127.0.0.1',
@@ -94,19 +92,34 @@ class DevelopConfig(GlobalConfig):
     }
 
     # MQ
-    mq_config = {
+    MQ_CONFIG = {
         'host': '127.0.0.1',
         'port': 15762,
         'username': 'guest',
         'password': 'guest'
     }
 
+    CELERY_CONFIG = {
+        'broker_url': 'redis://username:password@127.0.0.1:6379/0',  # redis://:password@host:port/db
+        'result_backend': 'redis://username:password@127.0.0.1:6379/0',  # amqp://user:password@host:port/myvhost
+        'task_serializer': 'json',
+        'result_serializer': 'json',
+        'accept_content': ['json'],
+        'include': [
+            'celerys.crontabs.notify',
+            'celerys.tasks.notify',
+        ]
+    }
 
-class ProductConfig(GlobalConfig):
-    debug = False
+
+
+
+
+class ProductConfig(Config):
+    DEBUG = False
 
 
 config_env = {
     'dev': DevelopConfig,
-    'pro': ProductConfig
+    'pro': ProductConfig,
 }

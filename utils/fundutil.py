@@ -37,6 +37,7 @@ class FundData:
 
     @classmethod
     async def get_date_net_worth(cls, code, date):
+        """获取时间净值"""
         days = (dt.yesterday() - dt.str_to_dt(date, "%Y-%m-%d")).days + 1
         total_count = 0
         weekend = set(list([5, 6]))
@@ -61,11 +62,7 @@ class FundData:
 
     @classmethod
     async def get_fund_name(cls, code):
-        """
-        获取基金名称
-        :param code:
-        :return:
-        """
+        """获取基金名称"""
         url = cls.FUND_INFO_URL % code
         response = await cls.client.fetch(url)
         try:
@@ -79,11 +76,7 @@ class FundData:
 
     @classmethod
     async def get_current_net_worth_old(cls, code):
-        """
-        获取当前净值
-        :param code:
-        :return:
-        """
+        """获取当前净值"""
         url = cls.FUND_INFO_URL % code + '&' + str(time.time())
         response = await cls.client.fetch(url)
         try:
@@ -104,11 +97,7 @@ class FundData:
 
     @classmethod
     async def get_pre_net_worth(cls, code):
-        """
-        获取昨日净值
-        :param code:
-        :return:
-        """
+        """获取昨日净值"""
         url = cls.FUND_HISTORY_NET_WORTH_URL % (code, 1)
         response = await cls.client.fetch(url)
         data = response.body.decode()
@@ -127,8 +116,7 @@ if __name__ == '__main__':
 
 
     async def main():
-        # return await FundData.get_current_net_worth('009308')
-        return await FundData.test('009308')
+        return await FundData.get_current_net_worth('009308')
 
 
     result = IOLoop.current().run_sync(main)
