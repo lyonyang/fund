@@ -20,7 +20,7 @@ from base import load_config
 PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(PROJECT_ROOT, os.pardir))
 
-config = load_config('test')
+config = load_config('dev')
 
 app = Celery('fund',
              broker=config.CELERY_CONFIG['broker_url'],
