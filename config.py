@@ -112,14 +112,11 @@ class DevelopConfig(Config):
     }
 
 
-
-
-
 class ProductConfig(Config):
     DEBUG = False
 
 
 config_env = {
     'dev': DevelopConfig,
-    'pro': ProductConfig,
+    'pro': ProductConfig
 }

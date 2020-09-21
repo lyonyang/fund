@@ -71,7 +71,7 @@ class MyFundList(RequestHandler):
                     map[record.code]['principal'] += record.amount / 1000
                     map[record.code]['copies'] += record.copies
             else:
-                tmp = record.normal_info()
+                tmp = await record.normal_info()
                 tmp['fund_name'] = await FundData.get_fund_name(record.code)
                 tmp['principal'] = record.amount / 1000
                 tmp['code'] = record.code

@@ -6,7 +6,9 @@
 """
 Fist step: celery beat -A celerys.server --loglevel=info
 
-Second setp: celery worker -A celerys.server --loglevel=info
+Second step: celery worker -A celerys.server --loglevel=info
+
+Flower : flower -A tasks --port=9000
 
 Celery config : https://docs.celeryproject.org/en/latest/userguide/configuration.html
 """
