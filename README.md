@@ -1,5 +1,9 @@
 # 基金管理系统
 
+**有什么建议提 Issues , 这样我会快点处理哦, 或者联系我, QQ: 547903993**
+
+本脚手架目标: 将构建一套完整的, 适合生产使用的框架, 包括缓存, 定时, 异步任务, 日志以及分布式支持, 长路漫漫, 死亡如风~
+
 基于 `Tornado` 的一个基金管理网站 , 当然基金只是一个 `Demo` , 其目的是为了更好的交流 `Tornado`
 
 技术栈 : Tornado + Peewee + Peewee-async + aioredis + motor + mongoengine + Nginx + Supervisor
