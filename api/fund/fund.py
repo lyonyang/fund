@@ -7,6 +7,7 @@ from docs import RequestHandler, define_api, Param
 from apps.users.trade import TradeRecord
 from api.status import Code, Message
 from utils.fundutil import FundData
+from celerys.tasks.fund import grab_fund_history_data
 
 
 class FundSurvey(RequestHandler):
@@ -121,4 +122,16 @@ class FundDelete(RequestHandler):
         ).where(TradeRecord.code == code,
                 TradeRecord.user_id == self.user_id,
                 TradeRecord.is_delete == TradeRecord.DELETE_NO))
+        return self.write_success()
+
+
+class FundOptional(RequestHandler):
+    @define_api('/fund/optional/add', [
+        Param('code', True, str, '', '基金代码'),
+    ], desc='添加自选基金')
+    @login_required
+    async def post(self):
+        code = self.get_arg('code')
+        # TODO: 等等的哦
+        grab_fund_history_data.delay(code)
         return self.write_success()

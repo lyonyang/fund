@@ -35,15 +35,28 @@ class FundData:
         r'''<td>(\d{4}-\d{2}-\d{2})</td><td.*?>(.*?)</td><td.*?>(.*?)</td><td.*?>(.*?)</td><td.*?>(.*?)</td><td.*?>(.*?)</td><td.*?></td>''',
         re.X)
 
+    # TODO: 节假日排除
+    REST_DAYS = {
+        '2020-10-01',
+        '2020-10-02',
+        '2020-10-05',
+        '2020-10-06',
+        '2020-10-07',
+        '2020-10-08',
+    }
+
     @classmethod
     async def get_date_net_worth(cls, code, date):
         """获取时间净值"""
         days = (dt.yesterday() - dt.str_to_dt(date, "%Y-%m-%d")).days + 1
         total_count = 0
         weekend = set(list([5, 6]))
+        # TODO: 抓取万年历, 剔除节假日
         for d in range(days):
             day = dt.yesterday() - datetime.timedelta(days=d)
             if day.weekday() in weekend:
+                continue
+            if dt.dt_to_str(day, '%Y-%m-%d') in cls.REST_DAYS:
                 continue
             total_count += 1
         page = total_count // 10 + (1 if total_count % 10 != 0 else 0)
@@ -76,7 +89,7 @@ class FundData:
 
     @classmethod
     async def get_current_net_worth_old(cls, code):
-        """获取当前净值"""
+        """获取实时的当前净值(旧版本, 暂时不用)"""
         url = cls.FUND_INFO_URL % code + '&' + str(time.time())
         response = await cls.client.fetch(url)
         try:
@@ -90,6 +103,7 @@ class FundData:
 
     @classmethod
     async def get_current_net_worth(cls, code):
+        """获取实时的当前净值"""
         url = cls.FUND_NET_WORTH % (code, int(time.time()))
         response = await cls.client.fetch(url)
         data = json.loads(response.body.decode()[8: -2])

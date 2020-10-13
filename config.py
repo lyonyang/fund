@@ -106,8 +106,8 @@ class DevelopConfig(Config):
         'result_serializer': 'json',
         'accept_content': ['json'],
         'include': [
-            'celerys.crontabs.notify',
-            'celerys.tasks.notify',
+            'celerys.crontabs.fund',
+            'celerys.tasks.fund',
         ]
     }
 
@@ -118,5 +118,5 @@ class ProductConfig(Config):
 
 config_env = {
     'dev': DevelopConfig,
-    'pro': ProductConfig
+    'pro': ProductConfig,
 }

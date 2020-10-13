@@ -7,7 +7,7 @@ from celery.schedules import crontab
 
 beat_schedule = {
     'send_email': {
-        'task': 'celerys.crontabs.notify.send_email',
+        'task': 'celerys.crontabs.fund.send_email',
         'schedule': crontab(minute='*/1'),
         'args': ()
     }

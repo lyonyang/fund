@@ -11,7 +11,7 @@ Motor for query : https://motor.readthedocs.io/en/stable/api-tornado/motor_colle
 import re
 from lib.dt import dt
 from base import config
-from mongoengine import Document, fields
+from mongoengine import Document, fields, connect
 from motor.core import AgnosticCollection
 from motor.motor_tornado import MotorClient
 from motor.metaprogramming import create_class_with_framework
@@ -27,7 +27,7 @@ client = MotorClient(
     authMechanism='SCRAM-SHA-1'
 )
 
-mongo_db = client[config.mongo_config['db']]
+mongo_db = client[config.MONGO_CONFIG['db']]
 
 HUMP_REGEX = re.compile(r'([a-z]|\d)([A-Z])')
 
@@ -56,6 +56,10 @@ class MongoModel(Document):
 
     objects = Collection()
 
+    meta = {
+        'abstract': True
+    }
+
     def __init__(self, *args, **kwargs):
         _id = None
         if '_id' in kwargs:
@@ -63,6 +67,13 @@ class MongoModel(Document):
         super(MongoModel, self).__init__(*args, **kwargs)
         self._id = _id
         self.pk = _id
+
+    @classmethod
+    def connect(cls):
+        """Sync link."""
+        connect(config.MONGO_CONFIG["db"], host=config.MONGO_CONFIG['host'],
+                port=config.MONGO_CONFIG["port"], username=config.MONGO_CONFIG["username"],
+                password=config.MONGO_CONFIG["password"], connect=False)
 
     @classmethod
     def collection_name(cls):
