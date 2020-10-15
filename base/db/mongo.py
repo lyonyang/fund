@@ -54,7 +54,7 @@ class MongoModel(Document):
     create_time = fields.DateTimeField(verbose_name='创建时间', default=dt.now)
     update_time = fields.DateTimeField(verbose_name='更新时间', default=dt.now)
 
-    objects = Collection()
+    async_objects = Collection()
 
     meta = {
         'abstract': True

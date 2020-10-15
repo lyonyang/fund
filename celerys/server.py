@@ -18,6 +18,7 @@ import sys
 import importlib
 from celery import Celery
 from base import load_config
+from mongoengine import connect
 
 PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(PROJECT_ROOT, os.pardir))
@@ -38,6 +39,10 @@ for cron in config.CELERY_CONFIG['include']:
 
 app.config_from_object(config)
 app.conf.beat_schedule = beat_schedule
+
+connect(app.conf.MONGO_CONFIG["db"], host=app.conf.MONGO_CONFIG['host'],
+        port=app.conf.MONGO_CONFIG["port"], username=app.conf.MONGO_CONFIG["username"],
+        password=app.conf.MONGO_CONFIG["password"], connect=False)
 
 if __name__ == '__main__':
     app.worker_main(argv=['-A', 'server', '--loglevel=info', '-P', 'eventlet'])

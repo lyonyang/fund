@@ -7,7 +7,7 @@ from docs import RequestHandler, define_api, Param
 from apps.users.trade import TradeRecord
 from api.status import Code, Message
 from utils.fundutil import FundData
-from celerys.tasks.fund import grab_fund_history_data
+from celerys.tasks.fund import grab_last_month_data
 
 
 class FundSurvey(RequestHandler):
@@ -41,7 +41,7 @@ class FundSurvey(RequestHandler):
         for code in map:
             hold_net_worth = map[code]['principal'] / map[code]['copies']
             cur_net_worth = await FundData.get_current_net_worth(code)
-            pre_net_worth = await FundData.get_pre_net_worth(code)
+            pre_net_worth = await FundData.get_yesterday_net_worth(code)
             principal += map[code]['principal']
             today_income += map[code]['copies'] * (cur_net_worth - pre_net_worth)
             income += map[code]['copies'] * (cur_net_worth - hold_net_worth)
@@ -81,7 +81,7 @@ class MyFundList(RequestHandler):
         for code in map:
             hold_net_worth = round(map[code]['principal'] / map[code]['copies'], 4)
             cur_net_worth = await FundData.get_current_net_worth(code)
-            pre_net_worth = await FundData.get_pre_net_worth(code)
+            pre_net_worth = await FundData.get_yesterday_net_worth(code)
             earning_rate = (cur_net_worth - hold_net_worth) / hold_net_worth
             today_earning_rate = (cur_net_worth - pre_net_worth) / pre_net_worth
             map[code]['copies'] = round(map[code]['copies'], 2)
@@ -129,9 +129,9 @@ class FundOptional(RequestHandler):
     @define_api('/fund/optional/add', [
         Param('code', True, str, '', '基金代码'),
     ], desc='添加自选基金')
-    @login_required
+    # @login_required
     async def post(self):
         code = self.get_arg('code')
         # TODO: 等等的哦
-        grab_fund_history_data.delay(code)
+        grab_last_month_data.delay(code)
         return self.write_success()

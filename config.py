@@ -99,6 +99,7 @@ class DevelopConfig(Config):
         'password': 'guest'
     }
 
+    # Celery
     CELERY_CONFIG = {
         'broker_url': 'redis://username:password@127.0.0.1:6379/0',  # redis://:password@host:port/db
         'result_backend': 'redis://username:password@127.0.0.1:6379/0',  # amqp://user:password@host:port/myvhost

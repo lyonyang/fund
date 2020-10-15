@@ -6,6 +6,7 @@ import re
 import time
 import json
 import datetime
+import requests
 from lib.dt import dt
 from lxml import etree
 from tornado.httpclient import AsyncHTTPClient
@@ -18,15 +19,23 @@ LINE_RE = re.compile(
 
 class FundData:
     client = AsyncHTTPClient()
+
+    # 基金列表
+    FUND_LIST = 'http://fund.eastmoney.com/js/fundcode_search.js'
+
     # 历史净值
     # 示例: http://fund.eastmoney.com/f10/F10DataApi.aspx?type=lsjz&code=001618&page=1
-    FUND_HISTORY_NET_WORTH_URL = 'http://fund.eastmoney.com/f10/F10DataApi.aspx?type=lsjz&code=%s&page=%s'
+    # 示例: http://fund.eastmoney.com/f10/F10DataApi.aspx?type=lsjz&code=001618&page=1&per=50
+    # 示例: http://fund.eastmoney.com/f10/F10DataApi.aspx?type=lsjz&code=001618&page=1&per=20&sdate=2017-03-01&edate=2017-03-01
+
+    FUND_NET_WORTH_URL = 'http://fund.eastmoney.com/f10/F10DataApi.aspx?type=lsjz&code=%s&page=%s&per=%s'
+    FUND_NET_WORTH_URL_BY_DATE = 'http://fund.eastmoney.com/f10/F10DataApi.aspx?type=lsjz&code=%s&page=%s&per=%s&sdate=%s&edate=%s'
 
     # 基金信息
     # 示例: http://fund.eastmoney.com/001618.html?spm=search
     FUND_INFO_URL = 'http://fund.eastmoney.com/%s.html?spm=search'
 
-    # 基金净值
+    # 基金实时净值
     FUND_NET_WORTH = 'http://fundgz.1234567.com.cn/js/%s.js?rt=%s'
 
     # 解析历史净值数据
@@ -35,43 +44,68 @@ class FundData:
         r'''<td>(\d{4}-\d{2}-\d{2})</td><td.*?>(.*?)</td><td.*?>(.*?)</td><td.*?>(.*?)</td><td.*?>(.*?)</td><td.*?>(.*?)</td><td.*?></td>''',
         re.X)
 
-    # TODO: 节假日排除
-    REST_DAYS = {
-        '2020-10-01',
-        '2020-10-02',
-        '2020-10-05',
-        '2020-10-06',
-        '2020-10-07',
-        '2020-10-08',
-    }
+    @classmethod
+    def sync_get_fund_name(cls, code):
+        """获取基金名称"""
+        url = cls.FUND_INFO_URL % code
+        response = requests.get(url)
+        response.encoding = response.apparent_encoding
+        try:
+            html = etree.HTML(response.text)
+            b = html.xpath('//div[@class="fundDetail-tit"]')
+        except:
+            return None
+        if not b: return None
+        return b[0].findtext('div')
+
+    @classmethod
+    def sync_get_last_month_net_worth(cls, code):
+        """同步方法, 获取近一个月的净值, 包含非交易日"""
+        yesterday = dt.yesterday()
+        last_month = yesterday - datetime.timedelta(days=30)
+        url = cls.FUND_NET_WORTH_URL_BY_DATE % (
+            code, 1, 10, last_month.strftime("%Y-%m-%d"), yesterday.strftime("%Y-%m-%d")
+        )
+        response = requests.get(url)
+        lines = cls.data_re.findall(response.text)
+        res = list()
+        for i in range(1, len(lines)):
+            match = cls.line_re.match(lines[i])
+            if match:
+                entry = match.groups()
+                res.append(entry)
+        return res
+
+    @classmethod
+    def sync_get_last_thirty_net_worth(cls, code):
+        """获取近30个交易日的净值"""
+        url = cls.FUND_NET_WORTH_URL % (code, 1, 30)
+        response = requests.get(url)
+        lines = cls.data_re.findall(response.text)
+        res = list()
+        for i in range(1, len(lines)):
+            match = cls.line_re.match(lines[i])
+            if match:
+                entry = match.groups()
+                res.append(entry)
+        return res
 
     @classmethod
     async def get_date_net_worth(cls, code, date):
-        """获取时间净值"""
-        days = (dt.yesterday() - dt.str_to_dt(date, "%Y-%m-%d")).days + 1
-        total_count = 0
-        weekend = set(list([5, 6]))
-        # TODO: 抓取万年历, 剔除节假日
-        for d in range(days):
-            day = dt.yesterday() - datetime.timedelta(days=d)
-            if day.weekday() in weekend:
-                continue
-            if dt.dt_to_str(day, '%Y-%m-%d') in cls.REST_DAYS:
-                continue
-            total_count += 1
-        page = total_count // 10 + (1 if total_count % 10 != 0 else 0)
-
-        url = cls.FUND_HISTORY_NET_WORTH_URL % (code, page)
+        """获取单个时间净值"""
+        url = cls.FUND_NET_WORTH_URL_BY_DATE % (code, 1, 10, date, date)
         response = await cls.client.fetch(url)
-        net_worth_map = dict()
-        for line in cls.data_re.findall(response.body.decode()):
-            match = cls.line_re.match(line)
-            if match:
-                entry = match.groups()
-                net_worth_map[entry[0]] = entry[1]
-        if date not in net_worth_map:
-            return None
-        return float(net_worth_map[date])
+        line = cls.data_re.findall(response.body.decode())[1]
+        match = cls.line_re.match(line)
+        if match:
+            entry = match.groups()
+            return float(entry[1])
+        return None
+
+    @classmethod
+    async def get_yesterday_net_worth(cls, code):
+        """获取昨日净值"""
+        return await cls.get_date_net_worth(code, dt.yesterday_str)
 
     @classmethod
     async def get_fund_name(cls, code):
@@ -108,21 +142,6 @@ class FundData:
         response = await cls.client.fetch(url)
         data = json.loads(response.body.decode()[8: -2])
         return float(data['gsz'])
-
-    @classmethod
-    async def get_pre_net_worth(cls, code):
-        """获取昨日净值"""
-        url = cls.FUND_HISTORY_NET_WORTH_URL % (code, 1)
-        response = await cls.client.fetch(url)
-        data = response.body.decode()
-        for line in cls.data_re.findall(data):
-            match = cls.line_re.match(line)
-            if match:
-                entry = match.groups()
-                if entry[0] == dt.today_str():
-                    continue
-                return float(entry[1])
-        return None
 
 
 if __name__ == '__main__':
