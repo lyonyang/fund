@@ -3,24 +3,11 @@
 # __author__ = Lyon
 
 """
-这里面 MySQL 和 MongoDB 夹杂在一起, 这个分类看个人, 现在因为表比较少, 没有分类太细
-夹杂在一起要注意用法的差异
+注意 MySQL 和 MongoDB 在使用上的差异
 """
 
-from peewee import CharField
 from mongoengine import fields
-from base.db.mysql import MySQLModel
 from base.db.mongo import MongoModel
-
-
-class FundInfo(MySQLModel):
-    """基金信息"""
-
-    class Meta:
-        table_name = 'fund_info'
-
-    code = CharField(max_length=6, verbose_name='基金代码', index=True)
-    name = CharField(max_length=256, verbose_name='基金名称')
 
 
 class FundHistoryNetWorth(MongoModel):

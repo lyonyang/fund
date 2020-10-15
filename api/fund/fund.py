@@ -5,6 +5,7 @@
 from base.auth import login_required
 from docs import RequestHandler, define_api, Param
 from apps.users.trade import TradeRecord
+from apps.users.fund import FundOptionalRecord
 from api.status import Code, Message
 from utils.fundutil import FundData
 from celerys.tasks.fund import grab_last_month_data
@@ -125,13 +126,37 @@ class FundDelete(RequestHandler):
         return self.write_success()
 
 
-class FundOptional(RequestHandler):
+class FundOptionalAdd(RequestHandler):
     @define_api('/fund/optional/add', [
         Param('code', True, str, '', '基金代码'),
     ], desc='添加自选基金')
-    # @login_required
+    @login_required
     async def post(self):
         code = self.get_arg('code')
-        # TODO: 等等的哦
+        exist = await FundOptionalRecord.objects.execute(
+            FundOptionalRecord.select('code').where(FundOptionalRecord.code == code,
+                                                    FundOptionalRecord.user_id == self.current_user_id,
+                                                    FundOptionalRecord.is_delete == FundOptionalRecord.DELETE_NO))
+        if exist:
+            return self.write_fail(code=Code.FUND_IN_OPTIONAL_LIST, msg=Message.FUND_IN_OPTIONAL_LIST)
+        fund_name = await FundData.get_fund_name(code)
+
+        await FundOptionalRecord.async_create(self.current_user_id, code, fund_name)
         grab_last_month_data.delay(code)
         return self.write_success()
+
+
+class FundOptionalList(RequestHandler):
+    @define_api('/fund/optional/list', [
+    ], desc='自选基金列表')
+    @login_required
+    async def post(self):
+        records = await FundOptionalRecord.objects.execute(
+            FundOptionalRecord.select().where(FundOptionalRecord.user_id == self.current_user_id,
+                                              FundOptionalRecord.is_delete == FundOptionalRecord.DELETE_NO))
+
+        data = list()
+        for rec in records:
+            data.append(rec.normal_info())
+
+        return self.write_success(data)

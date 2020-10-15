@@ -25,11 +25,7 @@ sys.path.insert(0, os.path.join(PROJECT_ROOT, os.pardir))
 
 config = load_config('dev')
 
-app = Celery('fund',
-             broker=config.CELERY_CONFIG['broker_url'],
-             backend=config.CELERY_CONFIG['result_backend'],
-             include=config.CELERY_CONFIG['include'],
-             set_as_current=False)
+app = Celery('fund', set_as_current=False)
 
 beat_schedule = dict()
 for cron in config.CELERY_CONFIG['include']:
@@ -37,12 +33,13 @@ for cron in config.CELERY_CONFIG['include']:
     if hasattr(module, 'beat_schedule'):
         beat_schedule.update(getattr(module, 'beat_schedule'))
 
-app.config_from_object(config)
+app.config_from_object(config.CELERY_CONFIG)
+app.conf.project_conf = config
 app.conf.beat_schedule = beat_schedule
 
-connect(app.conf.MONGO_CONFIG["db"], host=app.conf.MONGO_CONFIG['host'],
-        port=app.conf.MONGO_CONFIG["port"], username=app.conf.MONGO_CONFIG["username"],
-        password=app.conf.MONGO_CONFIG["password"], connect=False)
+connect(config.MONGO_CONFIG["db"], host=config.MONGO_CONFIG['host'],
+        port=config.MONGO_CONFIG["port"], username=config.MONGO_CONFIG["username"],
+        password=config.MONGO_CONFIG["password"], connect=False)
 
 if __name__ == '__main__':
     app.worker_main(argv=['-A', 'server', '--loglevel=info', '-P', 'eventlet'])

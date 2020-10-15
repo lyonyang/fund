@@ -26,6 +26,7 @@ from base.db.mysql import mysql_db as db
 from playhouse.migrate import MySQLMigrator, migrate
 from apps.users.user import FundUser
 from apps.users.trade import TradeRecord
+from apps.users.fund import FundOptionalRecord
 
 migrator = MySQLMigrator(db)
 
@@ -45,8 +46,10 @@ def create_table():
     db.create_tables([
         FundUser,
         TradeRecord,
+        FundOptionalRecord
     ])
 
 
 if __name__ == '__main__':
-    migrate_table()
+    # migrate_table()
+    create_table()

@@ -2,13 +2,11 @@
 # -*- coding:utf-8 -*-
 # __author__ = Lyon
 
-
+from base.db.mysql import MySQLModel
+from utils.fundutil import FundData
 from peewee import (
     IntegerField, CharField, DateField, DoubleField
 )
-
-from base.db.mysql import MySQLModel
-from utils.fundutil import FundData
 
 
 class TradeRecord(MySQLModel):

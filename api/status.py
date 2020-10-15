@@ -16,6 +16,7 @@ class Code:
 
     # 基金相关
     NET_WORTH_NOT_EXIST = 120001
+    FUND_IN_OPTIONAL_LIST = 120002
 
 
 class Message:
@@ -30,3 +31,4 @@ class Message:
     USER_IS_EXIST = "手机号已存在, 请直接登录!"
 
     NET_WORTH_NOT_EXIST = "净值不存在!"
+    FUND_IN_OPTIONAL_LIST = "该基金在自选列表中!"

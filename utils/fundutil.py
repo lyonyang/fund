@@ -59,6 +59,23 @@ class FundData:
         return b[0].findtext('div')
 
     @classmethod
+    def sync_get_section_net_worth(cls, code, start_time, end_time, raw=False):
+        """获取时间区间净值"""
+        url = cls.FUND_NET_WORTH_URL_BY_DATE % (code, 1, 10, start_time, end_time)
+        response = requests.get(url)
+        response.encoding = response.apparent_encoding
+        line = cls.data_re.findall(response.text)[1]
+        match = cls.line_re.match(line)
+        data = list()
+        if match:
+            entry = match.groups()
+            if raw:
+                data.append(entry)
+            else:
+                data.append(entry[1])
+        return data
+
+    @classmethod
     def sync_get_last_month_net_worth(cls, code):
         """同步方法, 获取近一个月的净值, 包含非交易日"""
         yesterday = dt.yesterday()
@@ -91,7 +108,7 @@ class FundData:
         return res
 
     @classmethod
-    async def get_date_net_worth(cls, code, date):
+    async def get_date_net_worth(cls, code, date, raw=False):
         """获取单个时间净值"""
         url = cls.FUND_NET_WORTH_URL_BY_DATE % (code, 1, 10, date, date)
         response = await cls.client.fetch(url)
@@ -99,13 +116,15 @@ class FundData:
         match = cls.line_re.match(line)
         if match:
             entry = match.groups()
+            if raw:
+                return entry
             return float(entry[1])
         return None
 
     @classmethod
-    async def get_yesterday_net_worth(cls, code):
+    async def get_yesterday_net_worth(cls, code, raw=False):
         """获取昨日净值"""
-        return await cls.get_date_net_worth(code, dt.yesterday_str)
+        return await cls.get_date_net_worth(code, dt.yesterday_str, raw)
 
     @classmethod
     async def get_fund_name(cls, code):
