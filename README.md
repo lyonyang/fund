@@ -1,12 +1,36 @@
-# 基金管理系统
 
-**有什么建议提 Issues , 这样我会快点处理哦, 或者联系我, QQ: 547903993**
 
-本脚手架目标: 将构建一套完整的, 适合生产使用的框架, 包括缓存, 定时, 异步任务, 日志以及分布式支持, 长路漫漫, 死亡如风~
+![tornado](./document/tornado.png)
 
-基于 `Tornado` 的一个基金管理网站 , 当然基金只是一个 `Demo` , 其目的是为了更好的交流 `Tornado`
 
-技术栈 : Tornado + Peewee + Peewee-async + aioredis + motor + mongoengine + Nginx + Supervisor
+
+## 介绍
+
+一个基金管理系统 , 基于 [Tornado](https://github.com/tornadoweb/tornado) , 构建一个成熟的 [Tornado](https://github.com/tornadoweb/tornado) **脚手架**
+
+技术栈 : Tornado + MySQL + MongoDB + Redis + Celery + Nginx + Supervisor
+
+联系我一起交流 , **QQ : 547903993** , **QQ群 : 590092348**
+
+## 维护
+
+### 脚手架
+
+- [x] `Tornado` 封装 : 配置 , 日志 , API
+- [x] `MySQL` 异步化 : Peewee + Peewee-async  
+- [x] `MongoDB` 异步化 : mongoengine + motor
+- [x] `Redis` 异步化 : aioredis
+- [x] `Celery` 支持 , 异步任务与定时任务
+- [x] `Supervisor` 部署
+
+### 基金功能
+
+- [x] 登录 , 注册
+- [x] 基金交易记录
+- [x] 基金实时数据监控 , 收益计算
+- [ ] 自选基金
+- [ ] 基金排行
+- [ ] 基金实时交易模拟
 
 ## 项目结构
 
@@ -20,9 +44,14 @@ fund
 │   ├── fund        基金相关Model
 │   └── users       用户相关Model
 ├── base            Tornado App 封装
-├── db              数据库等异步化
+│   └── db          数据库等异步化
+├── celerys         Celery相关
+│   ├── crontabs    定时任务
+│   ├── tasks       异步任务
+│   └── server      Celery入口
 ├── deploy          部署相关文件
 ├── docs            API文档相关
+├── document        脚手架设计参考
 ├── lib             库 
 ├── script          项目相关脚本
 ├── utils           工具包
@@ -32,13 +61,31 @@ fund
 └── run.py          项目启动文件
 ```
 
+## 开始
 
-## 部署
+切换到项目根目录
 
-### 后台启动Tornado服务
+### 启动
 
 ```bash
-nohup python3 run.py > run.log 2>&1 &
+$ python run.py
+```
+
+记得配置好数据库相关配置, 以及数据表迁移哟~
+
+```bash
+# Linux 后台启动
+$ nohup python3 run.py > run.log 2>&1 &
+```
+
+### Celery
+
+```bash
+# 先启动 Celery Beat
+$ celery beat -A celerys.server --loglevel=info
+
+# 后启动 Celery Worker
+$ celery worker -A celerys.server --loglevel=info
 ```
 
 ### Nginx
