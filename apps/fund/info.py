@@ -30,3 +30,12 @@ class FundHistoryNetWorth(MongoModel):
         obj = cls(code=code, fund_name=fund_name, net_worth=net_worth, date=date, daily_growth_rate=daily_growth_rate,
                   **kwargs)
         return obj.save()
+
+    def normal_info(self):
+        return {
+            'code': self.code,
+            'fund_name': self.fund_name,
+            'net_worth': self.net_worth,
+            'date': self.date,
+            'daily_growth_rate': self.daily_growth_rate
+        }

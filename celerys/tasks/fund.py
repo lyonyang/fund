@@ -20,6 +20,6 @@ def grab_last_month_data(code):
         return
 
     fund_name = FundData.sync_get_fund_name(code)
-    records = FundData.sync_get_last_month_net_worth(code)
+    records = FundData.sync_get_last_thirty_net_worth(code)
     for rec in records:
         FundHistoryNetWorth.create(code, fund_name, float(rec[1]) * 1000, rec[0], float(rec[3][:-1]))

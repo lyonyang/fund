@@ -27,7 +27,7 @@ class FundData:
     # 示例: http://fund.eastmoney.com/f10/F10DataApi.aspx?type=lsjz&code=001618&page=1
     # 示例: http://fund.eastmoney.com/f10/F10DataApi.aspx?type=lsjz&code=001618&page=1&per=50
     # 示例: http://fund.eastmoney.com/f10/F10DataApi.aspx?type=lsjz&code=001618&page=1&per=20&sdate=2017-03-01&edate=2017-03-01
-
+    # raw=True (净值日期, 单位净值, 累计净值, 日增长率, 申购状态, 赎回状态, 分红送配)
     FUND_NET_WORTH_URL = 'http://fund.eastmoney.com/f10/F10DataApi.aspx?type=lsjz&code=%s&page=%s&per=%s'
     FUND_NET_WORTH_URL_BY_DATE = 'http://fund.eastmoney.com/f10/F10DataApi.aspx?type=lsjz&code=%s&page=%s&per=%s&sdate=%s&edate=%s'
 
@@ -110,7 +110,7 @@ class FundData:
     @classmethod
     async def get_date_net_worth(cls, code, date, raw=False):
         """获取单个时间净值"""
-        url = cls.FUND_NET_WORTH_URL_BY_DATE % (code, 1, 10, date, date)
+        url = cls.FUND_NET_WORTH_URL_BY_DATE % (code, 1, 1, date, date)
         response = await cls.client.fetch(url)
         line = cls.data_re.findall(response.body.decode())[1]
         match = cls.line_re.match(line)
@@ -124,7 +124,24 @@ class FundData:
     @classmethod
     async def get_yesterday_net_worth(cls, code, raw=False):
         """获取昨日净值"""
-        return await cls.get_date_net_worth(code, dt.yesterday_str, raw)
+        yesterday = dt.yesterday()
+        if yesterday.weekday() in {5, 6}:
+            pass
+        return await cls.get_date_net_worth(code, dt.yesterday_str(), raw)
+
+    @classmethod
+    async def get_last_day_net_worth(cls, code, raw=False):
+        """获取最后一个交易日净值"""
+        url = cls.FUND_NET_WORTH_URL % (code, 1, 1)
+        response = await cls.client.fetch(url)
+        line = cls.data_re.findall(response.body.decode())[1]
+        match = cls.line_re.match(line)
+        if match:
+            entry = match.groups()
+            if raw:
+                return entry
+            return float(entry[1])
+        return None
 
     @classmethod
     async def get_fund_name(cls, code):

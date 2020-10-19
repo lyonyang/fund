@@ -2,12 +2,15 @@
 # -*- coding:utf-8 -*-
 # __author__ = Lyon
 
+from lib.dt import dt
+from cache.fund import FundRedis
 from base.auth import login_required
-from docs import RequestHandler, define_api, Param
-from apps.users.trade import TradeRecord
-from apps.users.fund import FundOptionalRecord
 from api.status import Code, Message
 from utils.fundutil import FundData
+from apps.users.trade import TradeRecord
+from apps.users.fund import FundOptionalRecord
+from apps.fund.info import FundHistoryNetWorth
+from docs import RequestHandler, define_api, Param
 from celerys.tasks.fund import grab_last_month_data
 
 
@@ -42,7 +45,7 @@ class FundSurvey(RequestHandler):
         for code in map:
             hold_net_worth = map[code]['principal'] / map[code]['copies']
             cur_net_worth = await FundData.get_current_net_worth(code)
-            pre_net_worth = await FundData.get_yesterday_net_worth(code)
+            pre_net_worth = await FundData.get_last_day_net_worth(code)
             principal += map[code]['principal']
             today_income += map[code]['copies'] * (cur_net_worth - pre_net_worth)
             income += map[code]['copies'] * (cur_net_worth - hold_net_worth)
@@ -82,7 +85,7 @@ class MyFundList(RequestHandler):
         for code in map:
             hold_net_worth = round(map[code]['principal'] / map[code]['copies'], 4)
             cur_net_worth = await FundData.get_current_net_worth(code)
-            pre_net_worth = await FundData.get_yesterday_net_worth(code)
+            pre_net_worth = await FundData.get_last_day_net_worth(code)
             earning_rate = (cur_net_worth - hold_net_worth) / hold_net_worth
             today_earning_rate = (cur_net_worth - pre_net_worth) / pre_net_worth
             map[code]['copies'] = round(map[code]['copies'], 2)
@@ -150,13 +153,61 @@ class FundOptionalList(RequestHandler):
     @define_api('/fund/optional/list', [
     ], desc='自选基金列表')
     @login_required
-    async def post(self):
+    async def get(self):
         records = await FundOptionalRecord.objects.execute(
             FundOptionalRecord.select().where(FundOptionalRecord.user_id == self.current_user_id,
                                               FundOptionalRecord.is_delete == FundOptionalRecord.DELETE_NO))
-
         data = list()
         for rec in records:
-            data.append(rec.normal_info())
+            temp = rec.normal_info()
+            yesterday_net_worth, yesterday_growth_rate = (
+                await FundRedis.get_last_day_net_worth(rec.code)).split(',')
+            current_net_worth = await FundData.get_current_net_worth(rec.code)
+            current_growth_rate = round(
+                (current_net_worth - float(yesterday_net_worth)) / float(yesterday_net_worth) * 100, 2)
+            temp.update({
+                'yesterday_net_worth': yesterday_net_worth,
+                'yesterday_growth_rate': yesterday_growth_rate,
+                'current_net_worth': current_net_worth,
+                'current_growth_rate': current_growth_rate,
+            })
+            data.append(temp)
 
         return self.write_success(data)
+
+
+class FundOptionalDetail(RequestHandler):
+    @define_api('/fund/optional/detail', [
+        Param('code', True, str, '', '基金代码'),
+    ], desc='自选基金详情')
+    @login_required
+    async def get(self):
+        code = self.get_arg('code')
+        records = FundHistoryNetWorth.query.find(
+            {'code': code, 'is_delete': FundHistoryNetWorth.DELETE_NO})
+        data = list()
+        async for record in records:
+            data.append({
+                'code': record['code'],
+                'fund_name': record['fund_name'],
+                'net_worth': record['net_worth'],
+                'date': dt.dt_to_str(record['date'], '%Y-%m-%d'),
+                'daily_growth_rate': record['daily_growth_rate']
+            })
+
+        return self.write_success(data)
+
+
+class FundOptionalDelete(RequestHandler):
+    @define_api('/fund/optional/delete', [
+        Param('code', True, str, '', '基金代码'),
+    ], desc='删除自选基金')
+    @login_required
+    async def post(self):
+        code = self.get_arg('code')
+        await FundOptionalRecord.objects.execute(FundOptionalRecord.update(
+            {FundOptionalRecord.is_delete: FundOptionalRecord.DELETE_IS}
+        ).where(FundOptionalRecord.code == code,
+                FundOptionalRecord.user_id == self.user_id,
+                FundOptionalRecord.is_delete == FundOptionalRecord.DELETE_NO))
+        return self.write_success()

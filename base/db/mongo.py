@@ -54,7 +54,8 @@ class MongoModel(Document):
     create_time = fields.DateTimeField(verbose_name='创建时间', default=dt.now)
     update_time = fields.DateTimeField(verbose_name='更新时间', default=dt.now)
 
-    async_objects = Collection()
+    # async objects
+    query = Collection()
 
     meta = {
         'abstract': True
@@ -82,7 +83,7 @@ class MongoModel(Document):
     @classmethod
     async def create_one(cls, **values):
         document = cls(**values)
-        result = await cls.objects.insert_one(document.to_mongo())
+        result = await cls.query.insert_one(document.to_mongo())
         try:
             document.pk = result.inserted_id
             document._id = result.inserted_id
@@ -92,7 +93,7 @@ class MongoModel(Document):
 
     @classmethod
     async def create_many(cls, *values):
-        result = await cls.objects.insert_many([cls(**i).to_mongo() for i in values])
+        result = await cls.query.insert_many([cls(**i).to_mongo() for i in values])
         try:
             return result.inserted_ids
         except:
@@ -100,11 +101,11 @@ class MongoModel(Document):
 
     async def replace(self):
         assert (self.pk or self._id), "%s object's `_id` or `pk` cannot be None." % self.__class__.__name__
-        return await self.__class__.objects.replace_one({'_id': self.pk or self._id}, self.to_mongo())
+        return await self.__class__.query.replace_one({'_id': self.pk or self._id}, self.to_mongo())
 
     async def update(self, **kwargs):
         assert (self.pk or self._id), "%s object's `_id` or `pk` cannot be None." % self.__class__.__name__
-        return await self.__class__.objects.update_one({'_id': self.pk or self._id}, {'$set': kwargs})
+        return await self.__class__.query.update_one({'_id': self.pk or self._id}, {'$set': kwargs})
 
     async def delete(self, *args, **kwargs):
         return await self.update(is_delete=self.DELETE_IS)

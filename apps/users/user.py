@@ -22,11 +22,13 @@ class FundUser(MySQLModel):
     avatar = CharField(max_length=255, null=True, default=DEFAULT_AVATAR, verbose_name='头像')
 
     def normal_info(self):
-        return {
+        data = super(FundUser, self).normal_info()
+        data.update({
             'name': self.name,
             'phone': self.phone,
             'avatar': self.avatar,
-        }
+        })
+        return data
 
     @classmethod
     async def async_create(cls, phone, name, password, **kwargs):
