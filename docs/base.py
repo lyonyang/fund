@@ -6,10 +6,10 @@
 __all__ = ['DocsHandler', 'DocsLoginHandler', 'DocsMarkdownHandler',
            'Param', 'define_api', 'route']
 
+import json
+import inspect
 import functools
 import importlib
-import inspect
-import json
 import tornado.web
 from base import config
 from .view import DocsHandler, DocsLoginHandler, DocsMarkdownHandler

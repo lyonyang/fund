@@ -76,10 +76,10 @@ class FundData:
         return data
 
     @classmethod
-    def sync_get_last_month_net_worth(cls, code):
-        """同步方法, 获取近一个月的净值, 包含非交易日"""
+    def sync_get_net_worth(cls, code, days=30):
+        """同步方法, 获取净值, 包含非交易日"""
         yesterday = dt.yesterday()
-        last_month = yesterday - datetime.timedelta(days=30)
+        last_month = yesterday - datetime.timedelta(days=days)
         url = cls.FUND_NET_WORTH_URL_BY_DATE % (
             code, 1, 10, last_month.strftime("%Y-%m-%d"), yesterday.strftime("%Y-%m-%d")
         )
@@ -94,9 +94,9 @@ class FundData:
         return res
 
     @classmethod
-    def sync_get_last_thirty_net_worth(cls, code):
-        """获取近30个交易日的净值"""
-        url = cls.FUND_NET_WORTH_URL % (code, 1, 30)
+    def sync_get_trade_net_worth(cls, code, days=30):
+        """获取交易日的净值"""
+        url = cls.FUND_NET_WORTH_URL % (code, 1, days)
         response = requests.get(url)
         lines = cls.data_re.findall(response.text)
         res = list()
@@ -111,7 +111,7 @@ class FundData:
     async def get_date_net_worth(cls, code, date, raw=False):
         """获取单个时间净值"""
         url = cls.FUND_NET_WORTH_URL_BY_DATE % (code, 1, 1, date, date)
-        response = await cls.client.fetch(url)
+        response = await cls.client.fetch(url, validate_cert=False)
         line = cls.data_re.findall(response.body.decode())[1]
         match = cls.line_re.match(line)
         if match:
@@ -133,7 +133,7 @@ class FundData:
     async def get_last_day_net_worth(cls, code, raw=False):
         """获取最后一个交易日净值"""
         url = cls.FUND_NET_WORTH_URL % (code, 1, 1)
-        response = await cls.client.fetch(url)
+        response = await cls.client.fetch(url, validate_cert=False)
         line = cls.data_re.findall(response.body.decode())[1]
         match = cls.line_re.match(line)
         if match:
@@ -147,7 +147,7 @@ class FundData:
     async def get_fund_name(cls, code):
         """获取基金名称"""
         url = cls.FUND_INFO_URL % code
-        response = await cls.client.fetch(url)
+        response = await cls.client.fetch(url, validate_cert=False)
         try:
             html = etree.HTML(response.body.decode())
             b = html.xpath('//div[@class="fundDetail-tit"]')
@@ -161,7 +161,7 @@ class FundData:
     async def get_current_net_worth_old(cls, code):
         """获取实时的当前净值(旧版本, 暂时不用)"""
         url = cls.FUND_INFO_URL % code + '&' + str(time.time())
-        response = await cls.client.fetch(url)
+        response = await cls.client.fetch(url, validate_cert=False)
         try:
             html = etree.HTML(response.body.decode())
             b = html.xpath('//dd[@class="dataNums"]//text()')
@@ -175,7 +175,7 @@ class FundData:
     async def get_current_net_worth(cls, code):
         """获取实时的当前净值"""
         url = cls.FUND_NET_WORTH % (code, int(time.time()))
-        response = await cls.client.fetch(url)
+        response = await cls.client.fetch(url, validate_cert=False)
         data = json.loads(response.body.decode()[8: -2])
         return float(data['gsz'])
 

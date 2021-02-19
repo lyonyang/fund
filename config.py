@@ -21,13 +21,17 @@ class Config(BaseConfig):
     INSTALL_HANDLERS = [
         'api.users.user',
         'api.fund.fund',
+        'api.fund.optional',
         'api.fund.trade',
         'api.fund.simulate',
     ]
+
     INSTALL_HANDLERS_NAME = {
         'api.users.user': '用户API',
         'api.fund.fund': '基金API',
-        'api.fund.trade': '交易API'
+        'api.fund.optional': '自选API',
+        'api.fund.trade': '交易API',
+        'api.fund.simulate': '基金模拟API'
     }
     DOCS_USERNAME = 'admin'
     DOCS_PASSWORD = 'admin'
@@ -47,6 +51,8 @@ class Config(BaseConfig):
         logging.WARNING,
         logging.ERROR
     ]
+    ON_FINISH_ASYNC = True
+    LOG_REQUEST_PARAMS = True
 
     CORS_ALLOW_ORIGIN = ['*']
     CORS_ALLOW_HEADERS = ['*']

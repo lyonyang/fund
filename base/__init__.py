@@ -23,7 +23,6 @@ except:
 
 from base.log import TornadoLogger
 
-# TODO: Thread-local
 app = None
 config = None
 
@@ -75,10 +74,7 @@ def make_app(env):
     # Close tornado log
     options['logging'] = 'none'
 
-    from docs import route, RequestHandler, after_request
-
-    # Request log handler
-    after_request(RequestHandler.log_request)
+    from docs import route
 
     application = tornado.web.Application(route.handlers, **options)
     application.env = env if isinstance(env, str) else env.__name__
@@ -86,7 +82,7 @@ def make_app(env):
     application.config = config
     application.run = types.MethodType(run, application)
     application.run_sync = application.loop.run_sync
-    application.__class__.logger = TornadoLogger(config).logger
+    application.logger = TornadoLogger(config).logger
 
     app = application
 

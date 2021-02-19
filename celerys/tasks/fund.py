@@ -14,12 +14,12 @@ from apps.fund.info import FundHistoryNetWorth
 
 @app.task
 def grab_last_month_data(code):
-    """抓取该基金近一个月的数据"""
+    """抓取该基金半年的数据"""
     exist = FundHistoryNetWorth.objects.filter(code=code, is_delete=FundHistoryNetWorth.DELETE_NO).first()
     if exist:
         return
 
     fund_name = FundData.sync_get_fund_name(code)
-    records = FundData.sync_get_last_thirty_net_worth(code)
+    records = FundData.sync_get_trade_net_worth(code, 180)
     for rec in records:
         FundHistoryNetWorth.create(code, fund_name, float(rec[1]) * 1000, rec[0], float(rec[3][:-1]))

@@ -51,10 +51,15 @@ class BaseConfig:
         for key, value in d.items():
             self[key] = value
 
-    def __getitem__(self, item):
-        if hasattr(self, item):
-            return getattr(self, item)
-        raise AttributeError(item)
+    def __getitem__(self, key):
+        if hasattr(self, key):
+            return getattr(self, key)
+        raise AttributeError(key)
 
     def __setitem__(self, key, value):
         setattr(self, key, value)
+
+    def get(self, key):
+        if hasattr(self, key):
+            return self[key]
+        raise AttributeError(key)

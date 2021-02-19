@@ -22,6 +22,9 @@
 - [x] `Redis` 异步化 : aioredis
 - [x] `Celery` 支持 , 异步任务与定时任务
 - [x] `Supervisor` 部署
+- [ ] `API监控`
+- [ ] `ES` 全文搜索
+- [ ] `Docker` 
 
 ### 基金功能
 
@@ -45,6 +48,7 @@ fund
 │   └── users       用户相关Model
 ├── base            Tornado App 封装
 │   └── db          数据库等异步化
+├── cache           缓存相关
 ├── celerys         Celery相关
 │   ├── crontabs    定时任务
 │   ├── tasks       异步任务

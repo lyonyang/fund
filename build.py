@@ -3,6 +3,7 @@
 # __author__ = Lyon
 
 # TODO: About render build?
+# 关于使用了模板的文件, 暂时不做打包处理, 放入`IGNORE_FILES`里即可
 
 import os
 import time
@@ -21,7 +22,8 @@ EXCEPT_FILES = {
 # Only copy
 IGNORE_FILES = {
     'run.py',
-    'docs/view.py'
+    'docs/view.py',
+    'celerys/server.py'
 }
 
 PY_FILE_EXCEPT_SUF = ('.pyc', '.pyx')

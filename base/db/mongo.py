@@ -9,6 +9,7 @@ Motor for query : https://motor.readthedocs.io/en/stable/api-tornado/motor_colle
 """
 
 import re
+import datetime
 from lib.dt import dt
 from base import config
 from mongoengine import Document, fields, connect
@@ -54,6 +55,9 @@ class MongoModel(Document):
     create_time = fields.DateTimeField(verbose_name='创建时间', default=dt.now)
     update_time = fields.DateTimeField(verbose_name='更新时间', default=dt.now)
 
+    # sync objects
+    # type: Document._meta.objects
+
     # async objects
     query = Collection()
 
@@ -71,44 +75,75 @@ class MongoModel(Document):
 
     @classmethod
     def connect(cls):
+        # TODO: 是否需要? MotorClient是否能兼容
         """Sync link."""
-        connect(config.MONGO_CONFIG["db"], host=config.MONGO_CONFIG['host'],
-                port=config.MONGO_CONFIG["port"], username=config.MONGO_CONFIG["username"],
-                password=config.MONGO_CONFIG["password"], connect=False)
+        connect(config.MONGO_CONFIG["db"],
+                host=config.MONGO_CONFIG['host'],
+                port=config.MONGO_CONFIG["port"],
+                username=config.MONGO_CONFIG["username"],
+                password=config.MONGO_CONFIG["password"],
+                maxPoolSize=config.MONGO_CONFIG['max_connections'],
+                minPoolSize=config.MONGO_CONFIG['min_connections'],
+                connect=False)
 
     @classmethod
     def collection_name(cls):
         return cls._meta.get('collection', re.sub(HUMP_REGEX, r'\1_\2', cls.__name__))
 
     @classmethod
-    async def create_one(cls, **values):
-        document = cls(**values)
-        result = await cls.query.insert_one(document.to_mongo())
-        try:
-            document.pk = result.inserted_id
-            document._id = result.inserted_id
-            return document
-        except:
-            return None
+    async def async_create(cls, *items, **values):
+        """
+        Async create
+        :param items: call `insert_many`
+        :param values: call `insert_one`
+        :return:
+            items -> list[id] or None
+            values -> Document object or None
+        """
+        if items:
+            result = await cls.query.insert_many([cls(**i).to_mongo() for i in items])
+            try:
+                return result.inserted_ids
+            except:
+                return None
 
-    @classmethod
-    async def create_many(cls, *values):
-        result = await cls.query.insert_many([cls(**i).to_mongo() for i in values])
-        try:
-            return result.inserted_ids
-        except:
-            return None
+        if values:
+            document = cls(**values)
+            result = await cls.query.insert_one(document.to_mongo())
+            try:
+                document.pk = result.inserted_id
+                document._id = result.inserted_id
+                return document
+            except:
+                return None
 
-    async def replace(self):
+    async def async_replace(self):
         assert (self.pk or self._id), "%s object's `_id` or `pk` cannot be None." % self.__class__.__name__
         return await self.__class__.query.replace_one({'_id': self.pk or self._id}, self.to_mongo())
 
-    async def update(self, **kwargs):
+    async def async_update(self, **kwargs):
         assert (self.pk or self._id), "%s object's `_id` or `pk` cannot be None." % self.__class__.__name__
         return await self.__class__.query.update_one({'_id': self.pk or self._id}, {'$set': kwargs})
 
-    async def delete(self, *args, **kwargs):
-        return await self.update(is_delete=self.DELETE_IS)
+    async def async_delete(self, *args, **kwargs):
+        return await self.async_update(is_delete=self.DELETE_IS)
+
+    @classmethod
+    def create(cls, **kwargs):
+        document = cls(**kwargs)
+        res = super(MongoModel, document).save(**kwargs)
+
+        return document
+
+    def delete(self):
+        """Override Document.delete"""
+        return self.update(is_delete=self.DELETE_IS)
+
+    def update(self, **kwargs):
+        if not kwargs.get('update_time'):
+            kwargs['update_time'] = datetime.datetime.now()
+        super(MongoModel, self).update(**kwargs)
+        return self
 
     def __str__(self):
         return "%s object [%s]" % (self.__class__.__name__, self.pk or self._id)

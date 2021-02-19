@@ -72,13 +72,13 @@ class MySQLModel(Model):
         (1, '已删除'),
     )
 
+    class Meta:
+        database = mysql_db
+
     id = AutoField()
     create_time = DateTimeField(default=dt.now, verbose_name='创建时间')
     update_time = DateTimeField(default=dt.now, verbose_name='更新时间')
     is_delete = IntegerField(default=DELETE_NO, choices=DELETE_CHOICES, verbose_name='是否删除')
-
-    class Meta:
-        database = mysql_db
 
     @classmethod
     async def async_create(cls, **kwargs):
@@ -110,10 +110,6 @@ class MySQLModel(Model):
         """
         self.is_delete = self.DELETE_IS
         return await self.objects.update(self)
-
-    @property
-    def database(self):
-        return self.Meta.database
 
     def normal_info(self):
         return {

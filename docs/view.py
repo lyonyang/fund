@@ -3,13 +3,15 @@
 # __author__ = Lyon
 
 import jwt
-import datetime
+import json
 import inspect
+import datetime
 import itertools
 import traceback
 import tornado.web
-from typing import Any
+import tornado.gen
 from lib.dt import dt
+from typing import Any, Awaitable
 from api.status import Code, Message
 
 
@@ -17,13 +19,13 @@ def before_request(f):
     """
     Add global middleware of before request.
     """
-    RequestHandler._before_request_funcs.append(f)
+    RequestHandler.before_request_funcs.append(f)
     return f
 
 
 def after_request(f):
     """Add global middleware of after request."""
-    RequestHandler._after_request_funcs.append(f)
+    RequestHandler.after_request_funcs.append(f)
     return f
 
 
@@ -35,15 +37,12 @@ class RequestHandler(tornado.web.RequestHandler):
     _docs_params = {}
     _docs_headers = {}
 
-    # 全局请求中间件
-    _before_request_funcs = []
-    _after_request_funcs = []
+    # Global Middleware
+    before_request_funcs = []
+    after_request_funcs = []
 
     def __init__(self, application, request, **kwargs):
         super(RequestHandler, self).__init__(application, request, **kwargs)
-        # 局部请求中间件
-        self.before_request_funcs = []
-        self.after_request_funcs = []
 
     @property
     def app(self):
@@ -70,37 +69,53 @@ class RequestHandler(tornado.web.RequestHandler):
     def user_id(self):
         return self.current_user_id
 
-    def prepare(self):
-        for func in (self._before_request_funcs + self.before_request_funcs):
-            func_args = inspect.getfullargspec(func).args
-            if len(func_args):
-                func(self)
-            else:
-                func()
-        self.before_request()
+    # type: tornado.web.RequestHandler.prepare
+    async def prepare(self):
+        if self.before_request_funcs:
+            await tornado.gen.multi(self.before_request_funcs)
+        await self.before_request()
+
+    def add_callback(self, callback, *args, **kwargs):
+        self.app.loop.add_callback(callback, *args, **kwargs)
 
     def on_finish(self):
-        for func in (self._after_request_funcs + self.after_request_funcs):
-            func_args = inspect.getfullargspec(func).args
-            if len(func_args):
-                func(self)
-            else:
-                func()
-        self.after_request()
+        # async
+        if self.app.config.get("ON_FINISH_ASYNC"):
+            for func in self.after_request_funcs:
+                func_args = inspect.getfullargspec(func).args
+                if len(func_args):
+                    self.add_callback(func, self)
+                else:
+                    self.add_callback(func)
+        # sync
+        else:
+            for func in self.after_request_funcs:
+                func_args = inspect.getfullargspec(func).args
+                if len(func_args):
+                    func(self)
+                else:
+                    func()
+        if tornado.gen.is_future(self.after_request):
+            self.add_callback(self.after_request)
+        else:
+            self.after_request()
 
-    def before_request(self):
+    async def before_request(self) -> Awaitable:
         """
         Called at the beginning of a request before.
         """
         pass
 
-    def after_request(self):
+    def after_request(self) -> Awaitable[None]:
         """
         Called after the end of a request.
         """
         pass
 
     def write_fail(self, code=Code.ERROR, msg=Message.ERROR, data=""):
+        """
+        Request Fail. Return fail message.
+        """
         return self.write({'return_code': code, 'return_data': data, 'return_msg': msg})
 
     def write_success(self, data={}, code=Code.SUCCESS, msg=Message.SUCCESS):
@@ -159,11 +174,13 @@ class RequestHandler(tornado.web.RequestHandler):
 
     def token_decode(self, auth_token):
         """Decode token."""
-
         try:
             # verify_exp
-            payload = jwt.decode(auth_token, self.app.config.DOCS_TOKEN_SECRET_KEY,
-                                 options={'verify_exp': self.app.config.DOCS_TOKEN_VERIFY_EXPIRE})
+            payload = jwt.decode(
+                auth_token,
+                self.app.config.DOCS_TOKEN_SECRET_KEY,
+                algorithms=["HS256"],
+                options={'verify_exp': self.app.config.DOCS_TOKEN_VERIFY_EXPIRE})
             data = payload['data']
             return data
         except Exception:
@@ -171,23 +188,36 @@ class RequestHandler(tornado.web.RequestHandler):
 
     def _log(self):
         """self.finish() will second call."""
-        pass
+        # async
+        if self.app.config.get("ON_FINISH_ASYNC"):
+            self.add_callback(self.log_request)
+        # sync
+        else:
+            self.log_request()
 
     def log_request(self):
         date_string = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         code = self.get_status() or "-"
         code = str(code)
         request_time = 1000.0 * self.request.request_time()
-        msg = '%s - - [%s] "%s" %s %.2fms' % (self.request.remote_ip, date_string,
-                                              '%s %s %s' % (
-                                                  self.request.method, self.request.uri, self.request.version),
-                                              code, request_time)
+
+        args = ''
+        if self.app.config.get("LOG_REQUEST_PARAMS"):
+            keys = self._docs_params.get(self.request.method.lower(), {}).keys()
+            if keys:
+                args = json.dumps({key: self.get_argument(key) for key in keys})
+
+        msg = '%s - - [%s] "%s" %s %.2fms %s' % (self.request.remote_ip, date_string,
+                                                 '%s %s %s' % (
+                                                     self.request.method, self.request.uri, self.request.version),
+                                                 code, request_time, args)
 
         fmt_str = '\033[%d;%dm%s\033[0m'
         if code[0] == "1":  # 1xx - Informational
             msg = fmt_str % (1, 0, msg)
         elif code[0] == "2":  # 2xx - Success
-            msg = fmt_str % (0, 37, msg)
+            # msg = fmt_str % (0, 37, msg)
+            pass
         elif code == "304":  # 304 - Resource Not Modified
             msg = fmt_str % (0, 36, msg)
         elif code[0] == "3":  # 3xx - Redirection
@@ -200,6 +230,10 @@ class RequestHandler(tornado.web.RequestHandler):
             msg = fmt_str % (1, 0, msg)
 
         self.app.logger.info(msg)
+
+    @property
+    def logger(self):
+        return self.app.logger
 
     def log_exception(self, typ, value, tb):
         """Override to customize logging of uncaught exceptions.
@@ -275,7 +309,7 @@ class RequestHandler(tornado.web.RequestHandler):
         ``sys.exc_info()`` or ``traceback.format_exc``.
         """
         self.app.logger.error(traceback.format_exc())
-        self.finish({'return_code': Code.ERROR, 'return_msg': Message.ERROR, 'return_data': {}})
+        self.finish({'return_code': Code.System.ERROR, 'return_msg': Message.System.ERROR, 'return_data': {}})
 
     async def options(self):
         return self.write_success(data={
@@ -293,7 +327,6 @@ class DocsHandler(RequestHandler):
         docs_token = self.get_cookie('docs_token', default="")
         if not docs_token:
             return self.redirect('/tornado_docs/login')
-
         data = self.token_decode(docs_token)
         if not data:
             return self.redirect('/tornado_docs/login')
