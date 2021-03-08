@@ -62,6 +62,7 @@ class Manager(BaseManager):
 class MySQLModel(Model):
     """MySQL BaseModel"""
 
+    # async
     objects = Manager(mysql_db)
 
     DELETE_NO = 0
@@ -79,6 +80,28 @@ class MySQLModel(Model):
     create_time = DateTimeField(default=dt.now, verbose_name='创建时间')
     update_time = DateTimeField(default=dt.now, verbose_name='更新时间')
     is_delete = IntegerField(default=DELETE_NO, choices=DELETE_CHOICES, verbose_name='是否删除')
+
+    @classmethod
+    async def execute_sql(cls, sql, *params):
+        """async execute sql"""
+        return await cls.objects.execute(cls.raw(sql, *params))
+
+    @classmethod
+    async def async_execute(cls, query):
+        """async execute sql"""
+        return await cls.objects.execute(query)
+
+    @classmethod
+    async def async_get(cls, *args, **kwargs):
+        return await cls.objects.get(cls, *args, **kwargs)
+
+    @classmethod
+    async def async_select(cls, *fields):
+        return await cls.objects.execute(cls.select(*fields))
+
+    @classmethod
+    async def async_count(cls, query, clear_limit=False):
+        return await cls.objects.count(query, clear_limit)
 
     @classmethod
     async def async_create(cls, **kwargs):

@@ -20,10 +20,10 @@ class FundOptionalAdd(RequestHandler):
     @login_required
     async def post(self):
         code = self.get_arg('code')
-        exist = await FundOptionalRecord.objects.execute(
-            FundOptionalRecord.select('code').where(FundOptionalRecord.code == code,
-                                                    FundOptionalRecord.user_id == self.current_user_id,
-                                                    FundOptionalRecord.is_delete == FundOptionalRecord.DELETE_NO))
+
+        exist = await FundOptionalRecord.execute_sql(
+            "SELECT code FROM fund_optional_record WHERE code = %s AND user_id = %s AND is_delete = %s", code,
+            self.current_user_id, FundOptionalRecord.DELETE_NO)
         if exist:
             return self.write_fail(code=Code.FUND_IN_OPTIONAL_LIST, msg=Message.FUND_IN_OPTIONAL_LIST)
         fund_name = await FundData.get_fund_name(code)
@@ -77,14 +77,6 @@ class FundOptionalDetail(RequestHandler):
                 data['fund_name'] = record['fund_name']
                 data['fund_name'] = record['fund_name']
             series.append(round(int(record['net_worth']) / 1000, 4))
-            # series[1].append(record['daily_growth_rate'])
-            # data.append({
-            #     'code': record['code'],
-            #     'fund_name': ,
-            #     'net_worth': record['net_worth'],
-            #     'date': dt.dt_to_str(record['date'], '%Y-%m-%d'),
-            #     'daily_growth_rate': record['daily_growth_rate']
-            # })
             labels.append(dt.dt_to_str(record['date'], '%m-%d'))
         data = {'labels': labels, 'series': series}
 

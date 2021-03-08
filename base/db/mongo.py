@@ -17,6 +17,17 @@ from motor.core import AgnosticCollection
 from motor.motor_tornado import MotorClient
 from motor.metaprogramming import create_class_with_framework
 
+# Sync link
+connect(config.MONGO_CONFIG["db"],
+        host=config.MONGO_CONFIG['host'],
+        port=config.MONGO_CONFIG["port"],
+        username=config.MONGO_CONFIG["username"],
+        password=config.MONGO_CONFIG["password"],
+        maxPoolSize=config.MONGO_CONFIG['max_connections'],
+        minPoolSize=config.MONGO_CONFIG['min_connections'],
+        connect=False)
+
+# Sync link
 client = MotorClient(
     host=config.MONGO_CONFIG['host'],
     port=config.MONGO_CONFIG['port'],
@@ -49,6 +60,7 @@ class MongoModel(Document):
     DELETE_NO = 0
     DELETE_IS = 1
 
+    # async collection
     database = mongo_db
 
     is_delete = fields.IntField(verbose_name='删除状态', default=DELETE_NO)
@@ -72,19 +84,6 @@ class MongoModel(Document):
         super(MongoModel, self).__init__(*args, **kwargs)
         self._id = _id
         self.pk = _id
-
-    @classmethod
-    def connect(cls):
-        # TODO: 是否需要? MotorClient是否能兼容
-        """Sync link."""
-        connect(config.MONGO_CONFIG["db"],
-                host=config.MONGO_CONFIG['host'],
-                port=config.MONGO_CONFIG["port"],
-                username=config.MONGO_CONFIG["username"],
-                password=config.MONGO_CONFIG["password"],
-                maxPoolSize=config.MONGO_CONFIG['max_connections'],
-                minPoolSize=config.MONGO_CONFIG['min_connections'],
-                connect=False)
 
     @classmethod
     def collection_name(cls):
@@ -131,8 +130,7 @@ class MongoModel(Document):
     @classmethod
     def create(cls, **kwargs):
         document = cls(**kwargs)
-        res = super(MongoModel, document).save(**kwargs)
-
+        document = super(MongoModel, document).save(**kwargs)
         return document
 
     def delete(self):

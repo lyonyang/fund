@@ -8,6 +8,7 @@ from base.db.mysql import MySQLModel
 from peewee import (
     CharField
 )
+from lib.token import jwt_decode, jwt_encode
 
 
 class FundUser(MySQLModel):
@@ -29,6 +30,21 @@ class FundUser(MySQLModel):
             'avatar': self.avatar,
         })
         return data
+
+    def encode_token(self):
+        from base import app
+        data = {
+            'user_id': self.id,
+        }
+        return jwt_encode(data, app.config.BACKEND_TOKEN_SECRET_KEY)
+
+    @classmethod
+    def decode_token(cls, token):
+        from base import app
+        payload = jwt_decode(token, app.config.BACKEND_TOKEN_SECRET_KEY)
+        if payload is None:
+            return None
+        return payload.get('data')
 
     @classmethod
     async def async_create(cls, phone, name, password, **kwargs):

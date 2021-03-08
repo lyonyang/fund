@@ -3,10 +3,10 @@
 # __author__ = Lyon
 
 
+from apps.users.user import FundUser
 from api.status import Code, Message
 from base.auth import login_required
 from docs import RequestHandler, define_api, Param
-from apps.users.user import FundUser
 
 
 class UserRegister(RequestHandler):
@@ -19,12 +19,11 @@ class UserRegister(RequestHandler):
         phone = self.get_arg('phone')
         name = self.get_arg('name')
         password = self.get_arg('password')
-        user = await FundUser.objects.get(
-            FundUser.select().where(FundUser.phone == phone, FundUser.password == password))
+        user = await FundUser.async_get(phone=phone, password=password, is_delete=FundUser.DELETE_NO)
         if user:
-            return self.write_fail(Code.USER_IS_EXIST, Message.USER_IS_EXIST)
+            return self.write_fail(Code.User.USER_IS_EXIST, Message.User.USER_IS_EXIST)
         user = await FundUser.async_create(phone=phone, name=name, password=password)
-        return self.write_success(Code.SUCCESS, {'token': self.token_encode(user.id)})
+        return self.write_success({'token': FundUser.encode_token(user)})
 
 
 class UserLogin(RequestHandler):
@@ -35,15 +34,10 @@ class UserLogin(RequestHandler):
     async def post(self):
         phone = self.get_arg('phone')
         password = self.get_arg('password')
-        try:
-            user = await FundUser.objects.get(
-                FundUser.select().where(FundUser.phone == phone, FundUser.password == password))
-            if user.id:
-                return self.write_success({'token': self.token_encode(user.id)})
-        except Exception as e:
-            self.app.logger.info(e)
-            return self.write_fail(Code.USERNAME_OR_PASSWORD_INVALID, Message.USERNAME_OR_PASSWORD_INVALID)
-        return self.write_fail(Code.USERNAME_OR_PASSWORD_INVALID, Message.USERNAME_OR_PASSWORD_INVALID)
+        user = await FundUser.async_get(phone=phone, password=password, is_delete=FundUser.DELETE_NO)
+        if user:
+            return self.write_success({'token': FundUser.encode_token(user)})
+        return self.write_fail(Code.User.USERNAME_OR_PASSWORD_INVALID, Message.User.USERNAME_OR_PASSWORD_INVALID)
 
 
 class UserInfo(RequestHandler):
@@ -51,6 +45,5 @@ class UserInfo(RequestHandler):
     ], desc='用户信息')
     @login_required
     async def get(self):
-        user = await FundUser.objects.get(FundUser.select().where(FundUser.id == self.user_id))
-
+        user = await FundUser.async_get(id=self.current_user_id)
         return self.write_success(data=user.normal_info())

@@ -105,7 +105,7 @@ class FundGet(RequestHandler):
     async def get(self):
         net_worth = await FundData.get_current_net_worth(self.get_arg('code'))
         if net_worth is None:
-            return self.write_fail(Code.NET_WORTH_NOT_EXIST, Message.NET_WORTH_NOT_EXIST)
+            return self.write_fail(Code.Fund.NET_WORTH_NOT_EXIST, Message.Fund.NET_WORTH_NOT_EXIST)
         return self.write_success({'net_worth': net_worth})
 
 

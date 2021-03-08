@@ -51,8 +51,9 @@ class Config(BaseConfig):
         logging.WARNING,
         logging.ERROR
     ]
+    LOG_FORMAT = '%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(lineno)s - %(message)s'
+    LOG_REQUEST_DETAIL = True
     ON_FINISH_ASYNC = True
-    LOG_REQUEST_PARAMS = True
 
     CORS_ALLOW_ORIGIN = ['*']
     CORS_ALLOW_HEADERS = ['*']

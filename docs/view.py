@@ -2,17 +2,18 @@
 # -*- coding:utf-8 -*-
 # __author__ = Lyon
 
-import jwt
-import json
+import string
 import inspect
 import datetime
 import itertools
-import traceback
 import tornado.web
 import tornado.gen
+import tornado.process
+import concurrent.futures
 from lib.dt import dt
 from typing import Any, Awaitable
 from api.status import Code, Message
+from lib.token import jwt_decode, jwt_encode
 
 
 def before_request(f):
@@ -44,22 +45,27 @@ class RequestHandler(tornado.web.RequestHandler):
     def __init__(self, application, request, **kwargs):
         super(RequestHandler, self).__init__(application, request, **kwargs)
 
+        if not hasattr(self, "executor"):
+            self.executor = concurrent.futures.ThreadPoolExecutor(
+                max_workers=(tornado.process.cpu_count() * 5)
+            )  # type: concurrent.futures.Executor
+
     @property
     def app(self):
         return self.application
 
     def set_default_headers(self):
-        allow_origin = self.app.config.CORS_ALLOW_ORIGIN
-        if isinstance(self.app.config.CORS_ALLOW_ORIGIN, list):
-            allow_origin = ','.join(self.app.config.CORS_ALLOW_ORIGIN)
+        allow_origin = self.application.config.CORS_ALLOW_ORIGIN
+        if isinstance(self.application.config.CORS_ALLOW_ORIGIN, list):
+            allow_origin = ','.join(self.application.config.CORS_ALLOW_ORIGIN)
 
-        allow_headers = self.app.config.CORS_ALLOW_HEADERS
-        if isinstance(self.app.config.CORS_ALLOW_HEADERS, list):
-            allow_headers = ','.join(self.app.config.CORS_ALLOW_HEADERS)
+        allow_headers = self.application.config.CORS_ALLOW_HEADERS
+        if isinstance(self.application.config.CORS_ALLOW_HEADERS, list):
+            allow_headers = ','.join(self.application.config.CORS_ALLOW_HEADERS)
 
-        allow_method = self.app.config.CORS_ALLOW_METHOD
-        if isinstance(self.app.config.CORS_ALLOW_METHOD, list):
-            allow_method = ','.join(self.app.config.CORS_ALLOW_METHOD)
+        allow_method = self.application.config.CORS_ALLOW_METHOD
+        if isinstance(self.application.config.CORS_ALLOW_METHOD, list):
+            allow_method = ','.join(self.application.config.CORS_ALLOW_METHOD)
 
         self.set_header("Access-Control-Allow-Origin", allow_origin)
         self.set_header("Access-Control-Allow-Headers", allow_headers)
@@ -76,11 +82,11 @@ class RequestHandler(tornado.web.RequestHandler):
         await self.before_request()
 
     def add_callback(self, callback, *args, **kwargs):
-        self.app.loop.add_callback(callback, *args, **kwargs)
+        self.application.loop.add_callback(callback, *args, **kwargs)
 
     def on_finish(self):
         # async
-        if self.app.config.get("ON_FINISH_ASYNC"):
+        if self.application.config.get("ON_FINISH_ASYNC"):
             for func in self.after_request_funcs:
                 func_args = inspect.getfullargspec(func).args
                 if len(func_args):
@@ -112,21 +118,23 @@ class RequestHandler(tornado.web.RequestHandler):
         """
         pass
 
-    def write_fail(self, code=Code.ERROR, msg=Message.ERROR, data=""):
-        """
-        Request Fail. Return fail message.
-        """
-        return self.write({'return_code': code, 'return_data': data, 'return_msg': msg})
+    def _get_argument(self, name, default, source, strip=True):
+        args = self._get_arguments(name, source, strip=strip)
+        if not args:
+            return default
+        return args[-1]
 
-    def write_success(self, data={}, code=Code.SUCCESS, msg=Message.SUCCESS):
-        return self.write({'return_code': code, 'return_data': data, 'return_msg': msg})
+    def get_headers(self, name, default=None, strip=True):
+        s = self.request.headers.get(name, default)
+        if strip:
+            s = s.strip()
+        return s
 
     def get_arg(self, name, default=None, strip=True):
         param = self._docs_params.get(self.request.method.lower(), {}).get(name, {})  # type: Param
-        argument = self.get_argument(name, default="", strip=strip) or default  # type: String
+        argument = self.get_argument(name, default=default, strip=strip) or default  # type: String
         if param.get('required') and not argument:
-            self.set_status(400, 'Bad Request!')
-            raise tornado.web.Finish()
+            self.write_bad_request()
         return argument
 
     def get_arg_int(self, name, default=None, strip=True):
@@ -134,8 +142,7 @@ class RequestHandler(tornado.web.RequestHandler):
             str_arg = self.get_arg(name, default=default, strip=strip)
             argument = int(str_arg) if str_arg else str_arg
         except:
-            self.set_status(400, 'Bad Request!')
-            raise tornado.web.Finish()
+            self.write_bad_request()
         return argument
 
     def get_arg_datetime(self, name, default=None, strip=True):
@@ -146,50 +153,12 @@ class RequestHandler(tornado.web.RequestHandler):
 
             return dt.str_to_dt(datetime_string)
         except:
-            self.set_status(400, 'Bad Request!')
-            raise tornado.web.Finish()
-
-    def get_docs_token(self):
-        return self.token_encode(0)
-
-    def token_encode(self, user_id):
-        """Generate token."""
-
-        payload = {
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=self.app.config.DOCS_TOKEN_EXPIRE_DAYS),
-            'iat': datetime.datetime.utcnow(),
-            'iss': 'Lyon',
-            'data': {
-                'user_id': user_id,
-                'login_time': datetime.datetime.now().strftime("%Y-%m-%D %H:%M:%S")
-            }
-        }
-        secret_key = self.app.config.DOCS_TOKEN_SECRET_KEY
-        token = jwt.encode(
-            payload,
-            secret_key,
-            algorithm='HS256'
-        ).decode('utf-8')
-        return token
-
-    def token_decode(self, auth_token):
-        """Decode token."""
-        try:
-            # verify_exp
-            payload = jwt.decode(
-                auth_token,
-                self.app.config.DOCS_TOKEN_SECRET_KEY,
-                algorithms=["HS256"],
-                options={'verify_exp': self.app.config.DOCS_TOKEN_VERIFY_EXPIRE})
-            data = payload['data']
-            return data
-        except Exception:
-            return None
+            self.write_bad_request()
 
     def _log(self):
         """self.finish() will second call."""
         # async
-        if self.app.config.get("ON_FINISH_ASYNC"):
+        if self.application.config.get("ON_FINISH_ASYNC", False):
             self.add_callback(self.log_request)
         # sync
         else:
@@ -201,23 +170,30 @@ class RequestHandler(tornado.web.RequestHandler):
         code = str(code)
         request_time = 1000.0 * self.request.request_time()
 
-        args = ''
-        if self.app.config.get("LOG_REQUEST_PARAMS"):
-            keys = self._docs_params.get(self.request.method.lower(), {}).keys()
-            if keys:
-                args = json.dumps({key: self.get_argument(key) for key in keys})
+        header_params, body_params = '', ''
 
-        msg = '%s - - [%s] "%s" %s %.2fms %s' % (self.request.remote_ip, date_string,
-                                                 '%s %s %s' % (
-                                                     self.request.method, self.request.uri, self.request.version),
-                                                 code, request_time, args)
+        if self.application.config.get("LOG_REQUEST_DETAIL", True):
+            if hasattr(self, '_docs_headers'):
+                headers = self._docs_headers.get(self.request.method.lower(), {}).keys()
+                if headers:
+                    header_params = '&'.join(
+                        ['%s=%s' % (key, self.get_headers(key, default='')) for key in headers])
+            if hasattr(self, '_docs_params'):
+                keys = self._docs_params.get(self.request.method.lower(), {}).keys()
+                if keys:
+                    body_params = '&'.join(['%s=%s' % (key, self.get_argument(key, default='')) for key in keys])
+        params = '%s - %s' % (header_params, body_params) if (header_params or body_params) else ''
+
+        msg = '%s - - [%s] "%s" %s %.2fms - %s' % (self.request.remote_ip, date_string,
+                                                   '%s %s %s' % (
+                                                       self.request.method, self.request.uri, self.request.version),
+                                                   code, request_time, params)
 
         fmt_str = '\033[%d;%dm%s\033[0m'
         if code[0] == "1":  # 1xx - Informational
             msg = fmt_str % (1, 0, msg)
         elif code[0] == "2":  # 2xx - Success
-            # msg = fmt_str % (0, 37, msg)
-            pass
+            msg = fmt_str % (0, 37, msg)
         elif code == "304":  # 304 - Resource Not Modified
             msg = fmt_str % (0, 36, msg)
         elif code[0] == "3":  # 3xx - Redirection
@@ -229,11 +205,11 @@ class RequestHandler(tornado.web.RequestHandler):
         else:  # 5xx, or any other response
             msg = fmt_str % (1, 0, msg)
 
-        self.app.logger.info(msg)
+        self.application.logger.info(msg)
 
     @property
     def logger(self):
-        return self.app.logger
+        return self.application.logger
 
     def log_exception(self, typ, value, tb):
         """Override to customize logging of uncaught exceptions.
@@ -249,9 +225,9 @@ class RequestHandler(tornado.web.RequestHandler):
             if value.log_message:
                 format = "%d %s: " + value.log_message
                 args = [value.status_code, self._request_summary()] + list(value.args)
-                self.app.logger.warning(format, *args)
+                self.application.logger.warning(format, *args)
         else:
-            self.app.logger.error(  # type: ignore
+            self.application.logger.error(  # type: ignore
                 "Uncaught exception %s\n%r",
                 self._request_summary(),
                 self.request,
@@ -270,7 +246,7 @@ class RequestHandler(tornado.web.RequestHandler):
         Additional keyword arguments are passed through to `write_error`.
         """
         if self._headers_written:
-            self.app.logger.error("Cannot send error response after headers written")
+            self.logger.error("Cannot send error response after headers written")
             if not self._finished:
                 # If we get an error between writing headers and finishing,
                 # we are unlikely to be able to finish due to a
@@ -279,7 +255,7 @@ class RequestHandler(tornado.web.RequestHandler):
                 try:
                     self.finish()
                 except Exception:
-                    self.app.logger.error("Failed to flush partial response", exc_info=True)
+                    self.logger.error("Failed to flush partial response", exc_info=True)
             return
         self.clear()
 
@@ -288,36 +264,53 @@ class RequestHandler(tornado.web.RequestHandler):
             exception = kwargs["exc_info"][1]
             if isinstance(exception, tornado.web.HTTPError) and exception.reason:
                 reason = exception.reason
-        self.set_status(status_code, reason=reason)
+        if status_code >= 500:
+            self.set_status(200, reason=reason)
         try:
-            self.write_error(status_code, **kwargs)
+            # self.write_error(status_code, **kwargs)
+            self.write_fail()
         except Exception:
-            self.app.logger.error("Uncaught exception in write_error", exc_info=True)
+            self.logger.error("Uncaught exception in write_error", exc_info=True)
         if not self._finished:
             self.finish()
 
-    def write_error(self, status_code: int, **kwargs: Any) -> None:
-        """Override to implement custom error pages.
-
-        ``write_error`` may call `write`, `render`, `set_header`, etc
-        to produce output as usual.
-
-        If this error was caused by an uncaught exception (including
-        HTTPError), an ``exc_info`` triple will be available as
-        ``kwargs["exc_info"]``.  Note that this exception may not be
-        the "current" exception for purposes of methods like
-        ``sys.exc_info()`` or ``traceback.format_exc``.
+    def write_fail(self, code=Code.System.ERROR, msg=Message.System.ERROR, data=""):
         """
-        self.app.logger.error(traceback.format_exc())
-        self.finish({'return_code': Code.System.ERROR, 'return_msg': Message.System.ERROR, 'return_data': {}})
+        Request Fail. Return fail message.
+        """
+        return self.write({'return_code': code, 'return_data': "" or dict(), 'return_msg': msg})
+
+    def write_success(self, data=None, code=Code.System.SUCCESS, msg=Message.System.SUCCESS):
+        if data is None:
+            data = dict()
+        return self.write({'return_code': code, 'return_data': data, 'return_msg': msg})
+
+    def write_bad_request(self):
+        self.set_status(400, 'Bad Request!')
+        raise tornado.web.Finish()
 
     async def options(self):
-        return self.write_success(data={
-            'Method': 'Options',
-            'Uri': self.request.uri,
-            'Version': self.request.version,
-            'Remote_ip': self.request.remote_ip,
-        })
+        return self.finish('OK')
+
+
+class PageNotFound(RequestHandler):
+    async def prepare(self) -> None:
+        self.set_status(404, reason='Not Found')
+        template = string.Template(
+            '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+            '<meta http-equiv="X-UA-Compatible"content="IE=edge">'
+            '<meta name="viewport"content="width=device-width, initial-scale=1">'
+            '<style>body{background-color:rgb(236,236,236);'
+            'color:#CD9B9B;font:100%"Lato",sans-serif;font-size:1.8rem;'
+            'font-weight:300}.center{text-align:center}.header{font-size:10rem;font-weight:700;'
+            'margin:2%0 2%0;text-shadow:5px 5px 5px#7f8c8d}.error{margin:-50px 0 2%0;font-size:6rem;'
+            'text-shadow:5px 5px 5px#7f8c8d;font-weight:500}</style>'
+            '<title>$code $message</title></head><body><section class="center"><article><h1 class="header">$code</h1>'
+            '<p class="error">$message</p></article></section></body></html>'
+        )
+        self.finish(
+            template.substitute(code=404, message=self._reason)
+        )
 
 
 class DocsHandler(RequestHandler):
@@ -327,8 +320,10 @@ class DocsHandler(RequestHandler):
         docs_token = self.get_cookie('docs_token', default="")
         if not docs_token:
             return self.redirect('/tornado_docs/login')
-        data = self.token_decode(docs_token)
-        if not data:
+
+        payload = jwt_decode(docs_token, self.application.config.DOCS_TOKEN_SECRET_KEY,
+                             verify_exp=self.application.config.DOCS_TOKEN_VERIFY_EXPIRE)
+        if not payload or not payload.get('data'):
             return self.redirect('/tornado_docs/login')
 
         endpoints = []
@@ -357,9 +352,16 @@ class DocsLoginHandler(RequestHandler):
     async def post(self):
         username = self.get_argument('username')
         password = self.get_argument('password')
-        if username == self.app.config.DOCS_USERNAME and password == self.app.config.DOCS_PASSWORD:
-            return self.write_success({'docs_token': self.get_docs_token()})
-        return self.write_fail(Code.USERNAME_OR_PASSWORD_INVALID, Message.USERNAME_OR_PASSWORD_INVALID)
+        if username == self.application.config.DOCS_USERNAME and password == self.application.config.DOCS_PASSWORD:
+            data = {
+                'login_time': datetime.datetime.now().strftime("%Y-%m-%D %H:%M:%S")
+            }
+            docs_token = jwt_encode(data, self.application.config.DOCS_TOKEN_SECRET_KEY,
+                                    expires=self.application.config.DOCS_TOKEN_EXPIRE_DAYS,
+                                    issuer='Lyon')
+
+            return self.write_success({'docs_token': docs_token})
+        return self.write_fail(Code.User.USERNAME_OR_PASSWORD_INVALID, Message.User.USERNAME_OR_PASSWORD_INVALID)
 
 
 class DocsMarkdownHandler(RequestHandler):

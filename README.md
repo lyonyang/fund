@@ -22,9 +22,11 @@
 - [x] `Redis` 异步化 : aioredis
 - [x] `Celery` 支持 , 异步任务与定时任务
 - [x] `Supervisor` 部署
+- [x] 详细请求日志
 - [ ] `API监控`
 - [ ] `ES` 全文搜索
 - [ ] `Docker` 
+- [ ] 考虑 `executor` 提升为类属性
 
 ### 基金功能
 

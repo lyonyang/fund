@@ -6,10 +6,10 @@
 __all__ = ['DocsHandler', 'DocsLoginHandler', 'DocsMarkdownHandler',
            'Param', 'define_api', 'route']
 
-import json
-import inspect
 import functools
 import importlib
+import inspect
+import json
 import tornado.web
 from base import config
 from .view import DocsHandler, DocsLoginHandler, DocsMarkdownHandler
@@ -125,10 +125,10 @@ class Endpoint(object):
         return json.dumps({'data': data})
 
     def get_doc(self):
-        meta_doc = inspect.getdoc(self.callback)
-        if meta_doc:
-            return meta_doc.replace('\n', '<br>').replace(' ', '&nbsp;')
-        return meta_doc
+        doc = self.callback.__doc__
+        if doc:
+            doc = doc.replace('\n', '', 1)
+        return doc
 
 
 class Param(dict):
