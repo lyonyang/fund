@@ -2,9 +2,9 @@
 # -*- coding:utf-8 -*-
 # __author__ = Lyon
 
-import logging
 import os
-from base import BaseConfig
+import logging
+from base.conf import BaseConfig
 
 
 class Config(BaseConfig):

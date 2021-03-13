@@ -42,12 +42,14 @@ class RequestHandler(tornado.web.RequestHandler):
     before_request_funcs = []
     after_request_funcs = []
 
+    executor = None
+
     def __init__(self, application, request, **kwargs):
         super(RequestHandler, self).__init__(application, request, **kwargs)
 
-        if not hasattr(self, "executor"):
-            self.executor = concurrent.futures.ThreadPoolExecutor(
-                max_workers=(tornado.process.cpu_count() * 5)
+        if self.executor is None:
+            self.__class__.executor = concurrent.futures.ThreadPoolExecutor(
+                max_workers=(tornado.process.cpu_count() * application.config.get('EXECUTOR_THREAD_MULTIPLE', 5))
             )  # type: concurrent.futures.Executor
 
     @property

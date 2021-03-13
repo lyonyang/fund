@@ -96,24 +96,42 @@ $ celery worker -A celerys.server --loglevel=info
 
 ### Nginx
 
-Nginx安装位置 : `/usr/locl/nginx`
+**启动**
 
-启动 :  `/usr/local/sbin/nginx -c /usr/local/nginx/conf/nginx.conf`
+```shell
+$ /usr/local/sbin/nginx -c /usr/local/nginx/conf/nginx.conf
+```
 
-重启 : `/usr/local/sbin/nginx -s reload`
+**重启**
+
+```shell
+$ /usr/local/sbin/nginx -s reload
+```
 
 ### Supervisor
 
-启动Supervisor : `supervisord  -c /mydata/projects/fund/deploy/supervisor/default.conf`
+**启动 Supervisor**
 
-启动Tornado服务 : `supervisorctl start fund`
+```shell
+$ supervisord  -c /mydata/projects/fund/deploy/supervisor/default.conf
+```
 
-重启Tornado服务 : `supervisorctl restart fund`
+**启动 Tornado 服务组**
+
+```shell
+$ supervisorctl start fund
+```
+
+**重启 Tornado 服务组**
+
+```shell
+$ supervisorctl restart fund
+```
 
 
-### requirements.txt维护
+### 依赖维护
 
-先安装 `pipreqs`
+安装 `pipreqs`
 
 ```bash
 $ pip install pipreqs
@@ -124,5 +142,28 @@ $ pip install pipreqs
 $ pipreqs . --force
 ```
 
+## 使用说明
 
+### load_config
 
+`config` 为一个全局配置变量 , 在调用 `load_config` 时被初始化 , 您可以自行优化 , 如类似 `Flask` 构建一个全局上下文栈等方式优化
+
+### make_app
+
+创建应用首要的是加载 `config.py` , 随后会加载整个 `INSTALL_HANDLERS` , 即你的接口 , 来完成路由注册 , 以及文档构建
+
+### Docs
+
+`docs` 目录是核心 , 它提供了 `define_api` 装饰器 , 来帮你构建路由和文档 , 以及对原始 `Tornado.web.RequestHandler` 的封装
+
+其中包括了 `executor` , 中间件 , 日志 , 异常捕捉 , Web API 文档等
+
+**关于中间件**
+
+这里是基于 `Tornado` 中的 `prepare` 以及 `on_finish` 来实现的 , 所以这样的中间件可能不是你所希望的 , 因为 `on_finish` 不应该接受一个 `Awaitable` 对象 , 如果我们使用 `IOLoop` 中的 `add_callback` , 虽然它可以加入到事件循环 , 但是它并不是我们想要的 "洋葱"
+
+所以后续可能会考虑在 `define_api` 基础之上 , 去实现一个真正 "洋葱" 的中间件
+
+## 致谢
+
+最后 , 欢迎和我一起交流 , 无论是更好的想法 , 还是一些存在的问题 , 我都非常乐意去做得更好 ~

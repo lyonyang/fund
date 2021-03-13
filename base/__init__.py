@@ -10,20 +10,17 @@ import tornado.web
 import tornado.ioloop
 import tornado.options
 import concurrent.futures
+from base.log import TornadoLogger
 
 PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(PROJECT_ROOT, os.pardir, os.pardir))
 
-from base.conf import BaseConfig
-
 try:
-    from .. import config as project_conf
+    import config as project_conf
 except:
     import importlib
 
     project_conf = importlib.import_module('fund.config')
-
-from base.log import TornadoLogger
 
 app = None
 config = None
@@ -74,6 +71,7 @@ class Application(tornado.web.Application):
 
 def load_config(env):
     """Only load config, not app."""
+    from base.conf import BaseConfig
     global config
     if config is not None:
         return config

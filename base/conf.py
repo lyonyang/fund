@@ -59,7 +59,9 @@ class BaseConfig:
     def __setitem__(self, key, value):
         setattr(self, key, value)
 
-    def get(self, key):
+    def get(self, key, *default):
         if hasattr(self, key):
             return self[key]
+        if len(default) != 0:
+            return default[0]
         raise AttributeError(key)
