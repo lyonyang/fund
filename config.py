@@ -54,6 +54,7 @@ class Config(BaseConfig):
     LOG_FORMAT = '%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(lineno)s - %(message)s'
     LOG_REQUEST_DETAIL = True
     ON_FINISH_ASYNC = True
+    EXECUTOR_THREAD_MULTIPLE = 100
 
     CORS_ALLOW_ORIGIN = ['*']
     CORS_ALLOW_HEADERS = ['*']

@@ -9,7 +9,7 @@ Peewee-async Document : https://peewee-async.readthedocs.io/en/latest/index.html
 
 from lib.dt import dt
 from base import config
-from peewee import Model, AutoField, DateTimeField, IntegerField, Query
+from peewee import Model, AutoField, DateTimeField, IntegerField, Query, ModelRaw
 from peewee_async import Manager as BaseManager, PooledMySQLDatabase
 
 # Connect to a MySQL database on network.
@@ -59,6 +59,12 @@ class Manager(BaseManager):
             return None
 
 
+class Raw(ModelRaw):
+    def sql(self):
+        sql, args = super(Raw, self).sql()
+        return sql, None
+
+
 class MySQLModel(Model):
     """MySQL BaseModel"""
 
@@ -82,6 +88,16 @@ class MySQLModel(Model):
     is_delete = IntegerField(default=DELETE_NO, choices=DELETE_CHOICES, verbose_name='是否删除')
 
     @classmethod
+    def _sql(cls, sql):
+        """no escape !"""
+        return Raw(cls, sql, None)
+
+    @classmethod
+    async def execute_sql_no_escape(cls, sql):
+        """不要用, 只使用参数化查询"""
+        return await cls.objects.execute(cls._sql(sql))
+
+    @classmethod
     async def execute_sql(cls, sql, *params):
         """async execute sql"""
         return await cls.objects.execute(cls.raw(sql, *params))
@@ -96,12 +112,33 @@ class MySQLModel(Model):
         return await cls.objects.get(cls, *args, **kwargs)
 
     @classmethod
-    async def async_select(cls, *fields):
-        return await cls.objects.execute(cls.select(*fields))
+    async def async_select(cls, *fields, where=None, order_by=None):
+        """
+        Simple select.
+        :param fields:
+        :param where: list or tuple
+        :param order_by:
+        :return:
+        """
+        query = cls.select(*fields)
+        if where:
+            query = query.where(*where)
+        if order_by:
+            query = query.order_by(order_by)
+        return await cls.objects.execute(query)
 
     @classmethod
     async def async_count(cls, query, clear_limit=False):
         return await cls.objects.count(query, clear_limit)
+
+    async def async_save(self):
+        """暂时只做创建使用"""
+        query = self.__class__.insert(**dict(self.__data__))
+
+        pk = await self.async_execute(query)
+        if self._pk is None:
+            self._pk = pk
+        return self
 
     @classmethod
     async def async_create(cls, **kwargs):

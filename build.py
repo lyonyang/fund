@@ -3,6 +3,7 @@
 # __author__ = Lyon
 
 # TODO: About render build?
+# TODO 待修复, 现在还有问题
 # 关于使用了模板的文件, 暂时不做打包处理, 放入`IGNORE_FILES`里即可
 
 import os
