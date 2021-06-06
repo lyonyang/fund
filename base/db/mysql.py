@@ -122,9 +122,16 @@ class MySQLModel(Model):
         """
         query = cls.select(*fields)
         if where:
-            query = query.where(*where)
+            if isinstance(order_by, (list, tuple)):
+                query = query.where(*where)
+            else:
+                query = query.where(where)
+
         if order_by:
-            query = query.order_by(order_by)
+            if isinstance(order_by, (list, tuple)):
+                query = query.order_by(*order_by)
+            else:
+                query = query.order_by(order_by)
         return await cls.objects.execute(query)
 
     @classmethod
