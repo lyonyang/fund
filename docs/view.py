@@ -280,7 +280,7 @@ class RequestHandler(tornado.web.RequestHandler):
         """
         Request Fail. Return fail message.
         """
-        return self.write({'return_code': code, 'return_data': "" or dict(), 'return_msg': msg})
+        return self.write({'return_code': code, 'return_data': data or dict(), 'return_msg': msg})
 
     def write_success(self, data=None, code=Code.System.SUCCESS, msg=Message.System.SUCCESS):
         if data is None:

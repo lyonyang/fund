@@ -21,11 +21,11 @@ class FundOptionalAdd(RequestHandler):
     async def post(self):
         code = self.get_arg('code')
 
-        exist = await FundOptionalRecord.execute_sql(
+        exist = await FundOptionalRecord.async_sql(
             "SELECT code FROM fund_optional_record WHERE code = %s AND user_id = %s AND is_delete = %s", code,
             self.current_user_id, FundOptionalRecord.DELETE_NO)
         if exist:
-            return self.write_fail(code=Code.FUND_IN_OPTIONAL_LIST, msg=Message.FUND_IN_OPTIONAL_LIST)
+            return self.write_fail(code=Code.Fund.FUND_IN_OPTIONAL_LIST, msg=Message.Fund.FUND_IN_OPTIONAL_LIST)
         fund_name = await FundData.get_fund_name(code)
 
         await FundOptionalRecord.async_create(self.current_user_id, code, fund_name)
@@ -38,12 +38,12 @@ class FundOptionalList(RequestHandler):
     ], desc='自选基金列表')
     @login_required
     async def get(self):
-        records = await FundOptionalRecord.objects.execute(
-            FundOptionalRecord.select().where(FundOptionalRecord.user_id == self.current_user_id,
-                                              FundOptionalRecord.is_delete == FundOptionalRecord.DELETE_NO))
+        records = await FundOptionalRecord.async_select(user_id=self.current_user_id,
+                                                        is_delete=FundOptionalRecord.DELETE_NO)
+
         data = list()
         for rec in records:
-            temp = rec.normal_info()
+            temp = await rec.normal_info()
             yesterday_net_worth, yesterday_growth_rate = (
                 await FundRedis.get_last_day_net_worth(rec.code)).split(',')
             current_net_worth = await FundData.get_current_net_worth(rec.code)
@@ -90,9 +90,11 @@ class FundOptionalDelete(RequestHandler):
     @login_required
     async def post(self):
         code = self.get_arg('code')
-        await FundOptionalRecord.objects.execute(FundOptionalRecord.update(
-            {FundOptionalRecord.is_delete: FundOptionalRecord.DELETE_IS}
-        ).where(FundOptionalRecord.code == code,
-                FundOptionalRecord.user_id == self.user_id,
-                FundOptionalRecord.is_delete == FundOptionalRecord.DELETE_NO))
+
+        record = await FundOptionalRecord.async_get(code=code, user_id=self.user_id,
+                                                    is_delete=FundOptionalRecord.DELETE_NO)
+        if not record:
+            return self.write_bad_request()
+        await record.async_delete()
+
         return self.write_success()

@@ -5,15 +5,36 @@
 """
 Peewee Document : http://docs.peewee-orm.com/en/latest/
 Peewee-async Document : https://peewee-async.readthedocs.io/en/latest/index.html
+
+Using transactions
+Documents: https://peewee-async.readthedocs.io/en/latest/peewee_async/examples.html#using-both-sync-and-async-calls
+
+with sync_db.atomic() as tran:
+    pass
+
+with async_db.atomic_async() as tran:
+    pass
 """
 
+import operator
 from lib.dt import dt
 from base import config
-from peewee import Model, AutoField, DateTimeField, IntegerField, Query, ModelRaw
-from peewee_async import Manager as BaseManager, PooledMySQLDatabase
+from peewee import reduce
+from peewee_async import Manager, PooledMySQLDatabase, AsyncQueryWrapper
+from peewee import Model, AutoField, DateTimeField, IntegerField, Query
+from playhouse.pool import PooledMySQLDatabase as SyncPooledMySQLDatabase
 
 # Connect to a MySQL database on network.
-mysql_db = PooledMySQLDatabase(
+async_db = PooledMySQLDatabase(
+    config.MYSQL_CONFIG['db'],
+    max_connections=config.MYSQL_CONFIG['max_connections'],
+    user=config.MYSQL_CONFIG['username'],
+    password=config.MYSQL_CONFIG['password'],
+    host=config.MYSQL_CONFIG['host'],
+    port=config.MYSQL_CONFIG['port']
+)
+
+sync_db = SyncPooledMySQLDatabase(
     config.MYSQL_CONFIG['db'],
     max_connections=config.MYSQL_CONFIG['max_connections'],
     user=config.MYSQL_CONFIG['username'],
@@ -23,53 +44,74 @@ mysql_db = PooledMySQLDatabase(
 )
 
 
-class Manager(BaseManager):
-    async def get(self, source_, *args, **kwargs):
-        """Get the model instance or ``None`` if not found.
-        :param source_: model or base query for lookup
+class Func:
+    def __init__(self, value, opt, **kwargs):
+        self.val = value
+        self.opt = opt
+        self.kwargs = kwargs
 
-        Example::
+    @classmethod
+    def like(cls, value) -> "Func":
+        return cls(value, '%')
 
-            async def my_async_func():
-                obj1 = await objects.get(MyModel, id=1)
-                obj2 = await objects.get(MyModel, MyModel.id==1)
-                obj3 = await objects.get(MyModel.select().where(MyModel.id==1))
+    @classmethod
+    def in_(cls, value) -> "Func":
+        return cls(value, 'in')
 
-        All will return `MyModel` instance with `id = 1`
+    @classmethod
+    def eq(cls, value) -> "Func":
+        return cls(value, '=')
+
+    @classmethod
+    def ne(cls, value) -> "Func":
+        return cls(value, '!=')
+
+    @classmethod
+    def notin(cls, value) -> "Func":
+        return cls(value, 'ni')
+
+    @classmethod
+    def gt(cls, value) -> "Func":
+        return cls(value, '>')
+
+    @classmethod
+    def gte(cls, value):
+        return cls(value, '>=')
+
+    @classmethod
+    def lt(cls, value) -> "Func":
+        return cls(value, '<')
+
+    @classmethod
+    def lte(cls, value) -> "Func":
+        return cls(value, '<=')
+
+    @classmethod
+    def or_(cls, **kwargs) -> "Func":
         """
-        await self.connect()
+        phone_or_name=Func.or_(phone=130, name='Lyon')
+        """
+        return cls(kwargs, '|')
 
-        if isinstance(source_, Query):
-            query = source_
-            model = query.model
-        else:
-            query = source_.select()
-            model = source_
+    @classmethod
+    def and_(cls, **kwargs) -> "Func":
+        """
+        phone_and_name=Func.and_(phone=130, name='Lyon')
+        """
+        return cls(kwargs, '&')
 
-        conditions = list(args) + [(getattr(model, k) == v)
-                                   for k, v in kwargs.items()]
+    @classmethod
+    def is_null(cls, **kwargs) -> "Func":
+        return cls(kwargs, 'is')
 
-        if conditions:
-            query = query.where(*conditions)
-
-        try:
-            result = await self.execute(query)
-            return list(result)[0]
-        except IndexError:
-            return None
+    @classmethod
+    def not_null(cls, **kwargs) -> "Func":
+        return cls(kwargs, 'si')
 
 
-class Raw(ModelRaw):
-    def sql(self):
-        sql, args = super(Raw, self).sql()
-        return sql, None
-
-
-class MySQLModel(Model):
-    """MySQL BaseModel"""
-
+class BaseModel(Model):
     # async
-    objects = Manager(mysql_db)
+    objects = Manager(async_db)
 
     DELETE_NO = 0
     DELETE_IS = 1
@@ -80,133 +122,244 @@ class MySQLModel(Model):
     )
 
     class Meta:
-        database = mysql_db
+        database = sync_db
 
-    id = AutoField()
     create_time = DateTimeField(default=dt.now, verbose_name='创建时间')
     update_time = DateTimeField(default=dt.now, verbose_name='更新时间')
     is_delete = IntegerField(default=DELETE_NO, choices=DELETE_CHOICES, verbose_name='是否删除')
 
     @classmethod
-    def _sql(cls, sql):
-        """no escape !"""
-        return Raw(cls, sql, None)
+    def get_sql(cls, *fields, order_by=None, paginate=None, **where):
+        return cls._get_query(*fields, order_by=order_by, paginate=paginate, **where)
 
+    # Async
     @classmethod
-    async def execute_sql_no_escape(cls, sql):
-        """不要用, 只使用参数化查询"""
-        return await cls.objects.execute(cls._sql(sql))
-
-    @classmethod
-    async def execute_sql(cls, sql, *params):
-        """async execute sql"""
+    async def async_sql(cls, sql, *params) -> AsyncQueryWrapper:
+        """async execute sql
+        """
         return await cls.objects.execute(cls.raw(sql, *params))
 
     @classmethod
     async def async_execute(cls, query):
-        """async execute sql"""
         return await cls.objects.execute(query)
 
     @classmethod
-    async def async_get(cls, *args, **kwargs):
-        return await cls.objects.get(cls, *args, **kwargs)
+    async def async_execute_count(cls, query):
+        return await cls.objects.count(query)
 
     @classmethod
-    async def async_select(cls, *fields, where=None, order_by=None):
-        """
-        Simple select.
-        :param fields:
-        :param where: list or tuple
-        :param order_by:
-        :return:
-        """
-        query = cls.select(*fields)
-        if where:
-            if isinstance(order_by, (list, tuple)):
-                query = query.where(*where)
-            else:
-                query = query.where(where)
+    async def async_get(cls, *fields, order_by=None, paginate=None, **where) -> Model or None:
+        query = cls._get_query(*fields, order_by=order_by, paginate=paginate, **where)
+        try:
+            result = await cls.objects.execute(query)
+            return list(result)[0]
+        except IndexError:
+            return None
 
-        if order_by:
-            if isinstance(order_by, (list, tuple)):
-                query = query.order_by(*order_by)
-            else:
-                query = query.order_by(order_by)
+    @classmethod
+    async def async_select(cls, *fields, order_by=None, paginate=None, **where) -> AsyncQueryWrapper:
+        """
+        Simple select
+        :param fields: 需要获取的字段
+        :param order_by: 排序
+        :param paginate: 分页 Demo: (0, 10)
+        :param where: 条件 关键字条件
+        """
+        query = cls._get_query(*fields, order_by=order_by, paginate=paginate, **where)
         return await cls.objects.execute(query)
 
     @classmethod
-    async def async_count(cls, query, clear_limit=False):
+    async def async_count(cls, *fields, clear_limit=False, **where) -> int:
+        query = cls._get_query(*fields, **where)
         return await cls.objects.count(query, clear_limit)
 
-    async def async_save(self):
-        """暂时只做创建使用"""
-        query = self.__class__.insert(**dict(self.__data__))
-
-        pk = await self.async_execute(query)
-        if self._pk is None:
-            self._pk = pk
-        return self
-
     @classmethod
-    async def async_create(cls, **kwargs):
+    async def async_create(cls, **kwargs) -> Model:
         """Create object
-        :param kwargs:
-        :return:
         """
         for field, value in kwargs.items():
             if not hasattr(cls, field):
                 raise AttributeError("%s object has no attribute %s" % (cls.__name__, field))
         return await cls.objects.create(cls, **kwargs)
 
-    async def async_update(self, **kwargs):
-        """Update object
-        :param kwargs:
-        :return:
+    async def async_update(self, _only=True, **kwargs) -> Model:
+        """Update object, only kwargs
         """
+        self.update_time = dt.now()
+        update_fields = ['update_time']
         for field, value in kwargs.items():
             if hasattr(self, field):
                 if getattr(self, field) != value:
                     setattr(self, field, value)
             else:
                 raise AttributeError("%s object has no attribute %s" % (self.__class__.__name__, field))
-        return await self.objects.update(self)
+            update_fields.append(field)
+        if _only:
+            _only = update_fields
+        else:
+            _only = None
 
-    async def async_delete(self):
+        await self.objects.update(self, only=_only)
+        return self
+
+    async def async_delete(self) -> Model:
         """Soft delete, `DELETE_NO` -> `DELETE_IS`
-        :return:
         """
-        self.is_delete = self.DELETE_IS
-        return await self.objects.update(self)
+        await self.async_update(is_delete=self.DELETE_IS)
+        return self
 
-    def normal_info(self):
+    # Sync
+    @classmethod
+    def sync_sql(cls, sql, *params):
+        return sync_db.async_sql(sql, params)
+
+    @classmethod
+    def sync_get(cls, *fields, order_by=None, paginate=None, **where) -> Model or None:
+        query = cls._get_query(*fields, order_by=order_by, paginate=paginate, **where)
+        try:
+            result = query.execute(query)
+            return list(result)[0]
+        except IndexError:
+            return None
+
+    @classmethod
+    def sync_select(cls, *fields, order_by=None, paginate=None, **where):
+        """
+        Simple select
+        :param fields: 需要获取的字段
+        :param order_by: 排序
+        :param paginate: 分页 Demo: (0, 10)
+        :param where: 条件 关键字条件
+        """
+        query = cls._get_query(*fields, order_by=order_by, paginate=paginate, **where)
+        return query
+
+    @classmethod
+    def sync_count(cls, *fields, clear_limit=False, **where) -> int:
+        query = cls._get_query(*fields, **where)
+        return query.count(clear_limit)
+
+    @classmethod
+    def sync_create(cls, **kwargs) -> Model:
+        return cls(**kwargs).save(force_insert=True)
+
+    def sync_update(self, _only=True, **kwargs) -> Model:
+        """Update object, only kwargs
+        """
+        self.update_time = dt.now()
+        update_fields = ['update_time']
+        for field, value in kwargs.items():
+            if hasattr(self, field):
+                if getattr(self, field) != value:
+                    setattr(self, field, value)
+            else:
+                raise AttributeError("%s object has no attribute %s" % (self.__class__.__name__, field))
+            update_fields.append(field)
+        if _only:
+            _only = update_fields
+        else:
+            _only = None
+        self.save(only=_only)
+        return self
+
+    def sync_delete(self) -> Model:
+        """Soft delete, `DELETE_NO` -> `DELETE_IS`
+        """
+        self.sync_update(is_delete=self.DELETE_IS)
+        return self
+
+    def dt_to_str(self, datetime, format="%Y-%m-%d %H:%M:%S"):
+        return dt.dt_to_str(datetime, format)
+
+    @classmethod
+    def get_or_expression(cls, kwargs):
+        return reduce(operator.or_, (cls.get_expression(field, value) for field, value in kwargs.items()))
+
+    @classmethod
+    def get_and_expression(cls, kwargs):
+        return reduce(operator.and_, (cls.get_expression(field, value) for field, value in kwargs.items()))
+
+    @classmethod
+    def get_expression(cls, field, value):
+        field = getattr(cls, field, None)
+        if isinstance(value, Func):
+            if value.opt == '%':
+                return field ** value.val
+            elif value.opt == 'in':
+                return field.in_(value.val)
+            elif value.opt == 'ni':
+                return field.not_in(value.val)
+            elif value.opt == '>':
+                return field > value.val
+            elif value.opt == '<':
+                return field < value.val
+            elif value.opt == '>=':
+                return field >= value.val
+            elif value.opt == '<=':
+                return field <= value.val
+            elif value.opt == 'is':
+                return field.is_null()
+            elif value.opt == 'si':
+                return field.is_null(False)
+            elif value.opt == '=':
+                return field == value.val
+            elif value.opt == '!=':
+                return field != value.val
+            elif value.opt == '|':
+                return cls.get_or_expression(value.val)
+            elif value.opt == '&':
+                return cls.get_and_expression(value.val)
+            else:
+                raise AttributeError("Func has no operator %s" % value.opt)
+        else:
+            return field == value
+
+    @classmethod
+    def _get_query(cls, *fields, order_by=None, paginate=None, **where) -> Query:
+        query = cls.select(*fields)
+        expressions = []
+        if where:
+            for field, value in where.items():
+                if hasattr(cls, field):
+                    if isinstance(value, (list, tuple)):
+                        for val in value:
+                            expressions.append(cls.get_expression(field, val))
+                    else:
+                        expressions.append(cls.get_expression(field, value))
+                else:
+                    if isinstance(value, Func) and (value.opt == '&' or value.opt == '|'):
+                        expressions.append(cls.get_expression(field, value))
+                    else:
+                        raise AttributeError("%s Model has no field %s" % (cls.__name__, field))
+
+            query = query.where(*expressions)
+        if order_by:
+            if isinstance(order_by, (list, tuple)):
+                query = query.order_by(*order_by)
+            else:
+                query = query.order_by(order_by)
+        if paginate:
+            page, paginate_by = paginate
+            query = query.paginate(page, paginate_by)
+        return query
+
+    async def normal_info(self):
         return {
-            'id': self.id,
-            'create_time': self.datetime_to_str(self.create_time),
-            'update_time': self.datetime_to_str(self.update_time),
+            'create_time': self.dt_to_str(self.create_time),
+            'update_time': self.dt_to_str(self.update_time),
             'is_delete': self.is_delete,
         }
 
-    def date_to_str(self, datetime):
-        return dt.dt_to_str(datetime, "%Y-%m-%d")
 
-    def datetime_to_str(self, datetime):
-        return dt.dt_to_str(datetime)
+class MySQLModel(BaseModel):
+    """MySQL BaseModel"""
 
-    # Using transactions
-    # Documents: https://peewee-async.readthedocs.io/en/latest/peewee_async/examples.html#using-both-sync-and-async-calls
-    """
-    async def test(self):
-        import peewee_async
-        obj = await self.objects.create(TestModel, text='FOO')
-        obj_id = obj.id
+    id = AutoField()
 
-        try:
-            async with self.database.atomic_async():
-                obj.text = 'BAR'
-                await self.objects.update(obj)
-                raise Exception('Fake error')
-        except:
-            res = await self.objects.get(TestModel, TestModel.id == obj_id)
-
-        print(res.text)  # Should print 'FOO', not 'BAR'
-    """
+    async def normal_info(self):
+        return {
+            'id': self.id,
+            'create_time': self.dt_to_str(self.create_time),
+            'update_time': self.dt_to_str(self.update_time),
+            'is_delete': self.is_delete,
+        }

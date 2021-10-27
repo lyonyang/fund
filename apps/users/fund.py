@@ -22,8 +22,8 @@ class FundOptionalRecord(MySQLModel):
         _obj = await super(FundOptionalRecord, cls).async_create(user_id=user_id, code=code, fund_name=fund_name)
         return _obj
 
-    def normal_info(self):
-        data = super(FundOptionalRecord, self).normal_info()
+    async def normal_info(self):
+        data = await super(FundOptionalRecord, self).normal_info()
         data.update({
             'code': self.code,
             'fund_name': self.fund_name

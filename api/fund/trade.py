@@ -3,6 +3,7 @@
 # __author__ = Lyon
 
 
+
 from api.status import Code, Message
 from base.auth import login_required
 from docs import RequestHandler, define_api, Param
@@ -27,7 +28,7 @@ class TradeRecordAdd(RequestHandler):
         net_worth = await FundData.get_date_net_worth(code, date)
         fund_name = await FundData.get_fund_name(code)
         if net_worth is None:
-            return self.write_fail(Code.NET_WORTH_NOT_EXIST, Message.NET_WORTH_NOT_EXIST)
+            return self.write_fail(Code.Fund.NET_WORTH_NOT_EXIST, Message.Fund.NET_WORTH_NOT_EXIST)
         copies = amount / net_worth / 1000
         await TradeRecord.async_create(self.user_id, code, fund_name, amount, net_worth * 10000, copies, date, type)
         return self.write_success()
@@ -40,11 +41,10 @@ class TradeRecordDelete(RequestHandler):
     @login_required
     async def post(self):
         record_id = self.get_arg_int('record_id')
-        await TradeRecord.objects.execute(TradeRecord.update(
-            {TradeRecord.is_delete: TradeRecord.DELETE_IS}
-        ).where(TradeRecord.id == record_id,
-                TradeRecord.user_id == self.user_id,
-                TradeRecord.is_delete == TradeRecord.DELETE_NO))
+        record = await TradeRecord.async_get(id=record_id, user_id=self.user_id, is_delete=TradeRecord.DELETE_NO)
+        if not record:
+            return self.write_bad_request()
+        await record.async_delete()
         return self.write_success()
 
 
@@ -53,12 +53,8 @@ class TradeRecordList(RequestHandler):
     ], desc='交易记录列表')
     @login_required
     async def get(self):
-        records = await TradeRecord.objects.execute(TradeRecord.select().where(
-            TradeRecord.user_id == self.user_id,
-            TradeRecord.is_delete == TradeRecord.DELETE_NO
-        ).order_by(
-            TradeRecord.date.desc())
-        )
+        records = await TradeRecord.async_select(user_id=self.user_id, is_delete=TradeRecord.DELETE_NO,
+                                                 order_by=TradeRecord.date.desc())
         data = []
         for record in records:
             data.append(await record.normal_info())

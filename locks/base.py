@@ -5,12 +5,9 @@
 """
 Base lock
 """
-
 import uuid
 import time
 import tornado.gen
-from redis.exceptions import WatchError
-from aioredis.errors import WatchVariableError
 from base.db.redis import async_redis, sync_redis
 
 
@@ -54,13 +51,15 @@ class Lock:
         await self.async_release()
 
 
-class AsyncRedisLock(Lock):
-    def __init__(self, *args, async_client=None, time_out=10, expire_time=20, **kwargs):
+class RedisLock(Lock):
+    async_client = async_redis
+    sync_client = sync_redis
+
+    def __init__(self, *args, async_client=None, sync_client=None, time_out=10, expire_time=10, **kwargs):
         if async_client:
             self.async_client = async_client
-        else:
-            self.async_client = async_redis
-        assert self.async_client is not None
+        if sync_client:
+            self.sync_client = sync_client
         self.args = args
         self.time_out = time_out
         self.expire_time = expire_time
@@ -83,39 +82,17 @@ class AsyncRedisLock(Lock):
 
     async def async_release(self):
         lock_name = self.get_lock_name()
-        pipe = self.async_client.multi_exec()
-        while True:
-            try:
-                await self.async_client.watch(lock_name)
-                val = await self.async_client.get(lock_name)
-                if val and isinstance(val, bytes):
-                    val = val.decode('utf-8')
-                if val == self.id:
-                    pipe.delete(lock_name)
-                    await pipe.execute()
-                    self.ok = True
-                    return self.id
-                await self.async_client.unwatch()
-                break
-            except WatchVariableError:
-                pass
-
-    def get_lock_name(self):
-        raise NotImplementedError()
-
-
-class SyncRedisLock(Lock):
-    def __init__(self, *args, sync_client=None, time_out=10, **kwargs):
-        if sync_client:
-            self.sync_client = sync_client
-        else:
-            self.sync_client = sync_redis
-        assert self.sync_client is not None
-        self.args = args
-        self.time_out = time_out
-        self.kwargs = kwargs
-        self.id = None
-        self.ok = False
+        release_script = """
+            if redis.call("get",KEYS[1]) == ARGV[1] then
+                return redis.call("del",KEYS[1])
+            else
+                return 0
+            end
+            """
+        try:
+            await self.async_client.eval(release_script, keys=[lock_name], args=[self.id])
+        except Exception as e:
+            raise ReleaseError
 
     def acquire(self):
         self.id = str(uuid.uuid4())
@@ -132,23 +109,17 @@ class SyncRedisLock(Lock):
 
     def release(self):
         lock_name = self.get_lock_name()
-        pip = self.sync_client.pipeline(True)
-        while True:
-            try:
-                pip.watch(lock_name)
-                lock_value = self.sync_client.get(lock_name)
-                if not lock_value:
-                    break
-                if lock_value.decode() == self.id:
-                    pip.multi()
-                    pip.delete(lock_name)
-                    pip.execute()
-                    self.ok = True
-                    break
-                pip.unwatch()
-                break
-            except WatchError:
-                pass
+        release_script = """
+            if redis.call("get",KEYS[1]) == ARGV[1] then
+                return redis.call("del",KEYS[1])
+            else
+                return 0
+            end
+            """
+        try:
+            self.sync_client.register_script(release_script)(keys=[lock_name], args=[self.id])
+        except Exception as e:
+            raise ReleaseError
 
     def get_lock_name(self):
         raise NotImplementedError()

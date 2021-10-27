@@ -17,4 +17,4 @@ class FundSim(RequestHandler):
     @define_api('/fund/simulate', [
     ], desc='基金模拟')
     async def post(self):
-        return self.write_success(data={})
+        return self.write_success()

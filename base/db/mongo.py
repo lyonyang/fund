@@ -27,7 +27,7 @@ connect(config.MONGO_CONFIG["db"],
         minPoolSize=config.MONGO_CONFIG['min_connections'],
         connect=False)
 
-# Sync link
+# Async link
 client = MotorClient(
     host=config.MONGO_CONFIG['host'],
     port=config.MONGO_CONFIG['port'],
@@ -82,8 +82,6 @@ class MongoModel(Document):
         if '_id' in kwargs:
             _id = kwargs.pop('_id')
         super(MongoModel, self).__init__(*args, **kwargs)
-        self._id = _id
-        self.pk = _id
 
     @classmethod
     def collection_name(cls):
@@ -124,20 +122,38 @@ class MongoModel(Document):
         assert (self.pk or self._id), "%s object's `_id` or `pk` cannot be None." % self.__class__.__name__
         return await self.__class__.query.update_one({'_id': self.pk or self._id}, {'$set': kwargs})
 
+    @classmethod
+    async def async_update_many(cls, filter, update):
+        """
+            print('matched %d, modified %d' %
+          (result.matched_count, result.modified_count))
+        :param filter:
+        :param update:
+        :return:
+        """
+        return await cls.query.update_many(filter, update)
+
     async def async_delete(self, *args, **kwargs):
         return await self.async_update(is_delete=self.DELETE_IS)
 
     @classmethod
-    def create(cls, **kwargs):
+    async def async_get(cls, match, **kwargs):
+        return await cls.query.find_one(match, **kwargs)
+
+    @classmethod
+    async def async_count(cls, match, **kwargs):
+        return await cls.query.count_documents(match, **kwargs)
+
+    @classmethod
+    def sync_create(cls, **kwargs):
         document = cls(**kwargs)
-        document = super(MongoModel, document).save(**kwargs)
-        return document
+        return super(MongoModel, document).save(**kwargs)
 
-    def delete(self):
+    def sync_delete(self):
         """Override Document.delete"""
-        return self.update(is_delete=self.DELETE_IS)
+        return self.sync_update(is_delete=self.DELETE_IS)
 
-    def update(self, **kwargs):
+    def sync_update(self, **kwargs):
         if not kwargs.get('update_time'):
             kwargs['update_time'] = datetime.datetime.now()
         super(MongoModel, self).update(**kwargs)

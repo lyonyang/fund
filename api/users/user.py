@@ -23,7 +23,8 @@ class UserRegister(RequestHandler):
         if user:
             return self.write_fail(Code.User.USER_IS_EXIST, Message.User.USER_IS_EXIST)
         user = await FundUser.async_create(phone=phone, name=name, password=password)
-        return self.write_success({'token': FundUser.encode_token(user)})
+        data = {'token': user.encode_token()}
+        return self.write_success(data)
 
 
 class UserLogin(RequestHandler):
@@ -46,4 +47,4 @@ class UserInfo(RequestHandler):
     @login_required
     async def get(self):
         user = await FundUser.async_get(id=self.current_user_id)
-        return self.write_success(data=user.normal_info())
+        return self.write_success(data=await user.normal_info())

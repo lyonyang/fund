@@ -22,8 +22,8 @@ class FundUser(MySQLModel):
     password = CharField(max_length=255, null=True, verbose_name='手机号')
     avatar = CharField(max_length=255, null=True, default=DEFAULT_AVATAR, verbose_name='头像')
 
-    def normal_info(self):
-        data = super(FundUser, self).normal_info()
+    async def normal_info(self):
+        data = await super(FundUser, self).normal_info()
         data.update({
             'name': self.name,
             'phone': self.phone,

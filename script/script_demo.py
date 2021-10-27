@@ -12,8 +12,7 @@ from base import make_app
 
 
 async def do_something():
-    from base.db.mongo import MongoModel
-    return await MongoModel.create_one()
+    pass
 
 
 if __name__ == '__main__':

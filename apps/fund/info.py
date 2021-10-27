@@ -31,7 +31,7 @@ class FundHistoryNetWorth(MongoModel):
                   **kwargs)
         return obj.save()
 
-    def normal_info(self):
+    async def normal_info(self):
         return {
             'code': self.code,
             'fund_name': self.fund_name,

@@ -45,7 +45,7 @@ class TradeRecord(MySQLModel):
         return _obj
 
     async def normal_info(self):
-        data = super(TradeRecord, self).normal_info()
+        data = await super(TradeRecord, self).normal_info()
         data.update({
             'code': self.code,
             'amount': self.amount,

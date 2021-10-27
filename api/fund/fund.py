@@ -15,10 +15,8 @@ class FundSurvey(RequestHandler):
     @login_required
     async def get(self):
         principal, income, today_income = 0, 0, 0
-        records = await TradeRecord.objects.execute(
-            TradeRecord.select().where(TradeRecord.user_id == self.user_id,
-                                       TradeRecord.is_delete == TradeRecord.DELETE_NO
-                                       ).order_by(TradeRecord.date))
+        records = await TradeRecord.async_select(user_id=self.user_id, is_delete=TradeRecord.DELETE_NO
+                                                 , order_by=TradeRecord.date)
         map = dict()
         for record in records:
             if record.code in map:
@@ -45,8 +43,8 @@ class FundSurvey(RequestHandler):
             today_income += map[code]['copies'] * (cur_net_worth - pre_net_worth)
             income += map[code]['copies'] * (cur_net_worth - hold_net_worth)
 
-        return self.write_success(
-            {'principal': round(principal, 2), 'income': round(income, 2), 'today_income': round(today_income, 2)})
+        data = {'principal': round(principal, 2), 'income': round(income, 2), 'today_income': round(today_income, 2)}
+        return self.write_success(data)
 
 
 class MyFundList(RequestHandler):
@@ -57,9 +55,8 @@ class MyFundList(RequestHandler):
     ], desc='我的基金')
     @login_required
     async def get(self):
-        records = await TradeRecord.objects.execute(TradeRecord.select().where(TradeRecord.user_id == self.user_id,
-                                                                               TradeRecord.is_delete == TradeRecord.DELETE_NO).order_by(
-            TradeRecord.date))
+        records = await TradeRecord.async_select(user_id=self.user_id, is_delete=TradeRecord.DELETE_NO,
+                                                 order_by=TradeRecord.date)
         map = dict()
         for record in records:
             if record.code in map:
@@ -106,7 +103,8 @@ class FundGet(RequestHandler):
         net_worth = await FundData.get_current_net_worth(self.get_arg('code'))
         if net_worth is None:
             return self.write_fail(Code.Fund.NET_WORTH_NOT_EXIST, Message.Fund.NET_WORTH_NOT_EXIST)
-        return self.write_success({'net_worth': net_worth})
+        data = {'net_worth': net_worth}
+        return self.write_success(data)
 
 
 class FundDelete(RequestHandler):
@@ -116,9 +114,8 @@ class FundDelete(RequestHandler):
     @login_required
     async def post(self):
         code = self.get_arg('code')
-        await TradeRecord.objects.execute(TradeRecord.update(
-            {TradeRecord.is_delete: TradeRecord.DELETE_IS}
-        ).where(TradeRecord.code == code,
-                TradeRecord.user_id == self.user_id,
-                TradeRecord.is_delete == TradeRecord.DELETE_NO))
+        record = await TradeRecord.async_get(code=code, user_id=self.user_id, is_delete=TradeRecord.DELETE_NO)
+        if not record:
+            return self.write_bad_request()
+        await record.async_delete()
         return self.write_success()
