@@ -211,15 +211,15 @@ class BaseModel(Model):
     # Sync
     @classmethod
     def sync_sql(cls, sql, *params):
-        return sync_db.async_sql(sql, params)
+        return sync_db.execute_sql(sql, params)
 
     @classmethod
     def sync_get(cls, *fields, order_by=None, paginate=None, **where) -> Model or None:
         query = cls._get_query(*fields, order_by=order_by, paginate=paginate, **where)
         try:
-            result = query.execute(query)
+            result = query.limit(1)
             return list(result)[0]
-        except IndexError:
+        except Exception:
             return None
 
     @classmethod
